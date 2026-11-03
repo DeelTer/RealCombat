@@ -32,6 +32,7 @@ public final class RealCombatClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		Keys.init();
+		ru.deelter.realcombat.combat.Sweep.clientView = VrClient::view;
 		ClientPlayNetworking.registerGlobalReceiver(StatePayload.TYPE, (payload, context) -> ClientCombat.receive(payload));
 		ClientPlayNetworking.registerGlobalReceiver(RulesPayload.TYPE, (payload, context) -> ClientCombat.serverRules(CombatConfig.rulesFromJson(payload.json())));
 		// before anything of the server arrives: a Paper server may answer the hello before the join
@@ -56,6 +57,7 @@ public final class RealCombatClient implements ClientModInitializer {
 			ClientCombat.tick(client);
 			DuelBot.tick(client);
 			MotionRecorder.tick();
+			VrTelegraph.tick(client);
 		});
 		LevelRenderEvents.END_MAIN.register(context -> MotionRecorder.frame());
 		HudElementRegistry.addLast(Identifier.parse("realcombat:hud"), Hud::extract);

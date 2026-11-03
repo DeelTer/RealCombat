@@ -99,8 +99,10 @@ public final class ClothScreen {
 				.setDefaultValue(compatDefaults.getVrParryDistance()).setMin(0.05f).setMax(1.5f).setSaveConsumer(compat::setVrParryDistance).build());
 		mods.addEntry(entries.startBooleanToggle(text("chopchop"), compat.isChopchop())
 				.setDefaultValue(compatDefaults.isChopchop()).setSaveConsumer(compat::setChopchop).build());
-		mods.addEntry(entries.startFloatField(text("severDamage"), compat.getSeverDamage())
-				.setDefaultValue(compatDefaults.getSeverDamage()).setMin(0).setSaveConsumer(compat::setSeverDamage).build());
+		mods.addEntry(entries.startIntSlider(text("killSeverChance"), Math.round(compat.getKillSeverChance() * 100), 0, 100)
+				.setDefaultValue(Math.round(compatDefaults.getKillSeverChance() * 100)).setSaveConsumer(v -> compat.setKillSeverChance(v / 100f)).build());
+		mods.addEntry(entries.startBooleanToggle(text("lowHealthSever"), compat.isLowHealthSever())
+				.setDefaultValue(compatDefaults.isLowHealthSever()).setSaveConsumer(compat::setLowHealthSever).build());
 		mods.addEntry(entries.startIntSlider(text("severChance"), Math.round(compat.getSeverChance() * 100), 0, 100)
 				.setDefaultValue(Math.round(compatDefaults.getSeverChance() * 100)).setSaveConsumer(v -> compat.setSeverChance(v / 100f)).build());
 		mods.addEntry(entries.startBooleanToggle(text("decapitate"), compat.isDecapitate())

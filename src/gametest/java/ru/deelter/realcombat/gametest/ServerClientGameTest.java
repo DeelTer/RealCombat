@@ -55,10 +55,10 @@ public class ServerClientGameTest implements FabricClientGameTest {
 			server.waitFor(s -> CombatServer.fighter(player(s)).getPhase() == Phase.PARRY, 20);
 
 			// the mechanic turned off and on for a player, as for an arena: his client follows
-			server.runCommand("realcombat disable @a");
+			server.runCommand("realcombatadmin disable @a");
 			context.waitFor(client -> !ClientCombat.getRules().isEnabled() && !ClientCombat.handles(), 40);
 			server.waitFor(s -> CombatServer.fighter(player(s)) == null, 20);
-			server.runCommand("realcombat enable @a");
+			server.runCommand("realcombatadmin enable @a");
 			context.waitFor(client -> ClientCombat.getRules().isEnabled() && ClientCombat.handles(), 40);
 
 			// a missed parry costs nothing, a whiff does: the server's stamina reaches the client

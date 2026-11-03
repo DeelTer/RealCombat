@@ -53,6 +53,8 @@ public final class MotionRecorder {
 	 */
 	private static Display.TextDisplay board;
 	private static final int BOARD_ID = -7_700_200;
+	private static final double BOARD_DISTANCE = 3;
+	private static int boardStep = -1;
 
 	private MotionRecorder() {
 	}
@@ -76,11 +78,12 @@ public final class MotionRecorder {
 		count = 0;
 		samples = new StringBuilder();
 		startNanos = System.nanoTime();
-		header = String.format(Locale.ROOT, "\"version\":1,\"mod\":\"realcombat\",\"scale\":%.4f,\"seated\":%b,\"leftHanded\":%b,\"eyeHeight\":%.4f,\"reps\":%d",
+		header = String.format(Locale.ROOT, "\"version\":2,\"mod\":\"realcombat\",\"scale\":%.4f,\"seated\":%b,\"leftHanded\":%b,\"eyeHeight\":%.4f,\"reps\":%d",
 				first.scale(), first.seated(), first.leftHanded(), player.getEyeHeight(), reps);
 		player.sendSystemMessage(Component.translatable("realcombat.record.started", script.size()));
 		board = new Display.TextDisplay(net.minecraft.world.entity.EntityTypes.TEXT_DISPLAY, mc.level);
 		board.setId(BOARD_ID);
+		boardStep = -1;
 		((DisplayAccessor) board).realcombat$setBillboardConstraints(Display.BillboardConstraints.CENTER);
 		placeBoard();
 		mc.level.addEntity(board);
@@ -91,13 +94,17 @@ public final class MotionRecorder {
 	 */
 	private static void placeBoard() {
 		Minecraft mc = Minecraft.getInstance();
-		VrClient.Sample sample = VrClient.sample();
-		if (board == null || sample == null || mc.player == null) return;
-		double[] head = sample.head();
-		float yaw = mc.player.getYRot();
-		double x = head[0] - Math.sin(Math.toRadians(yaw)) * 2;
-		double z = head[2] + Math.cos(Math.toRadians(yaw)) * 2;
-		board.setPos(x, head[1] - 0.1, z);
+		if (board == null || mc.player == null) return;
+		// put where the head looks when a step begins, and left there: it does not follow the eyes nor the hands
+		if (boardStep != step) {
+			boardStep = step;
+			ru.deelter.realcombat.compat.Vivecraft.Hand head = VrClient.head();
+			if (head != null) {
+				net.minecraft.world.phys.Vec3 forward = head.dir().horizontal().lengthSqr() < 1e-6 ? new net.minecraft.world.phys.Vec3(0, 0, 1) : head.dir().horizontal().normalize();
+				net.minecraft.world.phys.Vec3 at = head.pos().add(forward.scale(BOARD_DISTANCE));
+				board.setPos(at.x, head.pos().y + 0.15, at.z);
+			}
+		}
 		Component prompt = prompt();
 		if (prompt != null) {
 			((TextDisplayAccessor) board).realcombat$setText(prompt.copy().withStyle(recordingGo() ? ChatFormatting.GREEN : ChatFormatting.WHITE));
@@ -198,9 +205,9 @@ public final class MotionRecorder {
 		if (player == null || sample == null) return;
 		lastSample = now;
 		if (count > 0) samples.append(",\n");
-		samples.append(String.format(Locale.ROOT, "{\"t\":%.1f,\"step\":\"%s\",\"player\":[%.4f,%.4f,%.4f],\"bodyYaw\":%.2f,\"yaw\":%.2f,\"pitch\":%.2f,\"head\":%s,\"main\":%s,\"off\":%s}",
+		samples.append(String.format(Locale.ROOT, "{\"t\":%.1f,\"step\":\"%s\",\"player\":[%.4f,%.4f,%.4f],\"bodyYaw\":%.2f,\"yaw\":%.2f,\"pitch\":%.2f,\"head\":%s,\"main\":%s,\"off\":%s,\"sword\":%s}",
 				(now - startNanos) / 1e6, script.get(step).label(), player.getX(), player.getY(), player.getZ(), player.yBodyRot, player.getYRot(),
-				player.getXRot(), array(sample.head()), array(sample.main()), array(sample.off())));
+				player.getXRot(), array(sample.head()), array(sample.main()), array(sample.off()), array(sample.sword())));
 		count++;
 	}
 

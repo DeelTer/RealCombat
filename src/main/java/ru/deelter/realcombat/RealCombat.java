@@ -24,6 +24,7 @@ public final class RealCombat implements ModInitializer {
 	public void onInitialize() {
 		CombatConfig.load(FabricLoader.getInstance().getConfigDir().resolve(ID + ".json"));
 		PayloadTypeRegistry.serverboundPlay().register(ActionPayload.TYPE, ActionPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ru.deelter.realcombat.net.BladePayload.TYPE, ru.deelter.realcombat.net.BladePayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(StatePayload.TYPE, StatePayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(RulesPayload.TYPE, RulesPayload.CODEC);
 		CombatServer.init();

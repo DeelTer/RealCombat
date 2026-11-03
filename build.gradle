@@ -64,6 +64,7 @@ dependencies {
     // optional: limbs off and cuts where the blade landed. -PnoChopChop runs the game without it
     def chopchop = files(project.chopchop_jar)
     compileOnly chopchop
+    clientCompileOnly chopchop
     if (!project.hasProperty("noChopChop") && file(project.chopchop_jar).exists()) {
         runtimeOnly chopchop
     }

@@ -83,7 +83,9 @@ public final class Hud {
 		int cy = graphics.guiHeight() / 2;
 		float partial = delta.getGameTimeDeltaPartialTick(true);
 
-		if (client.isTelegraph()) {
+		// in VR the HUD rides on the sword hand: the arrows float in the world instead (VrTelegraph)
+		boolean vr = VrClient.active();
+		if (client.isTelegraph() && !vr) {
 			for (Entity attacker : threats(mc)) {
 				CombatPose pose = ClientCombat.poseOf(attacker, partial);
 				if (pose == null || (pose.phase() != Phase.WINDUP && pose.phase() != Phase.RELEASE)) continue;
@@ -103,7 +105,7 @@ public final class Hud {
 		}
 
 		Fighter own = ClientCombat.getOwn();
-		if (client.isDirectionPreview()) {
+		if (client.isDirectionPreview() && !vr) {
 			// the own blow: where it would come from now, or where the wound up one comes from
 			boolean winding = own.getPhase() == Phase.WINDUP || own.getPhase() == Phase.RELEASE;
 			boolean ready = own.getPhase() == Phase.IDLE || (own.getPhase() == Phase.RECOVERY && own.isCombo());
@@ -180,7 +182,7 @@ public final class Hud {
 
 	private static long lastSpent = Long.MIN_VALUE / 2;
 
-	private static List<Entity> threats(Minecraft mc) {
+	static List<Entity> threats(Minecraft mc) {
 		List<Entity> list = new ArrayList<>();
 		for (int id : ClientCombat.remoteIds()) {
 			Entity entity = mc.level.getEntity(id);

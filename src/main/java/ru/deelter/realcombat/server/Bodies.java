@@ -33,5 +33,15 @@ public interface Bodies {
 	 * @param killed the blow killed the target
 	 */
 	default void struck(ServerPlayer attacker, LivingEntity target, Dir dir, Vec3 swing, float damage, boolean killed) {
+		struck(attacker, target, dir, swing, damage, killed, null, null, false);
+	}
+
+	/**
+	 * @param from    where the blade came from into the body, null for the attacker's eyes
+	 * @param along   the way it came, null for the attacker's look
+	 * @param vrSlash a strong side slash of a VR blade
+	 */
+	default void struck(ServerPlayer attacker, LivingEntity target, Dir dir, Vec3 swing, float damage, boolean killed,
+						Vec3 from, Vec3 along, boolean vrSlash) {
 	}
 }

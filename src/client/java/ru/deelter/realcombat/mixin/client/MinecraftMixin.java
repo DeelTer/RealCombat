@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import ru.deelter.realcombat.client.ClientCombat;
+import ru.deelter.realcombat.client.Corpses;
 import ru.deelter.realcombat.combat.Weapons;
 
 /**
@@ -18,7 +19,8 @@ import ru.deelter.realcombat.combat.Weapons;
 public abstract class MinecraftMixin {
 	@Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
 	private void realcombat$swing(CallbackInfoReturnable<Boolean> cir) {
-		if (!ClientCombat.handles() || ClientCombat.onThing()) return;
+		// a dead body of ChopChop under the crosshair: the click is its cut
+		if (!ClientCombat.handles() || ClientCombat.onThing() || Corpses.aimed()) return;
 		ClientCombat.attackPressed();
 		cir.setReturnValue(false);
 	}

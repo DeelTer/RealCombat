@@ -53,9 +53,8 @@
 	"realcombat.config.vrSwingSpeed": "Скорость VR-замаха, блоков/тик",
 	"realcombat.config.vrParryDistance": "Дистанция VR-парирования",
 	"realcombat.config.chopchop": "ChopChop: раны и конечности",
-	"realcombat.config.severDamage": "Урон для отрубания",
-	"realcombat.config.severChance": "Шанс отрубить, %",
-	"realcombat.config.decapitate": "Смертельный удар сверху сносит голову",
+	"realcombat.config.severChance": "Шанс у почти мёртвых, %",
+	"realcombat.config.decapitate": "Смертельный удар по голове сносит её",
 	"realcombat.outcome.parried.by": "Тебя отпарировали",
 	"realcombat.outcome.chambered.by": "Враг встретил встречным",
 	"realcombat.outcome.blocked.by": "Удар в щит",
@@ -84,5 +83,7 @@
 	"realcombat.record.dir.under": "удар снизу вверх",
 	"realcombat.record.dir.right": "удар справа налево",
 	"realcombat.record.dir.left": "удар слева направо",
-	"realcombat.record.dir.stab": "укол остриём вперёд"
+	"realcombat.record.dir.stab": "укол остриём вперёд",
+	"realcombat.config.killSeverChance": "Смертельный удар отрубает конечность, %",
+	"realcombat.config.lowHealthSever": "Отрубать конечности и почти мёртвым"
 }

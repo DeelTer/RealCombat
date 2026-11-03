@@ -158,7 +158,9 @@ public final class ClientCombat {
 	}
 
 	private static void send(Protocol.Action action, int dir) {
-		if (serverSpeaks) ClientPlayNetworking.send(new ActionPayload(action, dir));
+		// a sparring fight is this client's own: the server, which does not know the partner, would see a parry that
+		// caught nothing and refuse the riposte after it
+		if (serverSpeaks && !DuelBot.active()) ClientPlayNetworking.send(new ActionPayload(action, dir));
 	}
 
 	/**
@@ -233,11 +235,20 @@ public final class ClientCombat {
 		if (!Weapons.armed(player) && own.getPhase() != Phase.IDLE && own.getPhase() != Phase.STUN) own.enter(Phase.IDLE, 1);
 		Rules.tick(own, rules, Weapons.speed(player));
 		if (DuelBot.active()) DuelBot.ownTick(own);
+		// in VR: the way the sword points as drawn, for the server's blade to be the one seen
+		if (serverSpeaks && Weapons.armed(player) && ClientPlayNetworking.canSend(ru.deelter.realcombat.net.BladePayload.TYPE)) {
+			ru.deelter.realcombat.compat.Vivecraft.Hand hand = VrClient.renderHand();
+			if (hand != null) {
+				var dir = hand.dir().normalize();
+				ClientPlayNetworking.send(new ru.deelter.realcombat.net.BladePayload((float) dir.x, (float) dir.y, (float) dir.z));
+			}
+		}
 	}
 
 	public static void receive(StatePayload payload) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player != null && payload.entity() == player.getId()) {
+			if (DuelBot.active()) return;
 			own.setStamina(payload.stamina());
 			if (payload.forced()) {
 				// the same swing as predicted (a blow of ours landed): keep its timing, the client is a ping ahead

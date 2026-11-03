@@ -53,9 +53,8 @@
 	"realcombat.config.vrSwingSpeed": "VR swing speed, blocks/tick",
 	"realcombat.config.vrParryDistance": "VR parry distance",
 	"realcombat.config.chopchop": "ChopChop: wounds and limbs",
-	"realcombat.config.severDamage": "Damage to sever",
-	"realcombat.config.severChance": "Sever chance, %",
-	"realcombat.config.decapitate": "Killing overhead takes the head",
+	"realcombat.config.severChance": "Chance at the nearly dead, %",
+	"realcombat.config.decapitate": "Killing slash at the head takes it",
 	"realcombat.outcome.parried.by": "You were parried",
 	"realcombat.outcome.chambered.by": "Chambered by the foe",
 	"realcombat.outcome.blocked.by": "Into the shield",
@@ -84,5 +83,7 @@
 	"realcombat.record.dir.under": "a blow from below, up",
 	"realcombat.record.dir.right": "a slash from right to left",
 	"realcombat.record.dir.left": "a slash from left to right",
-	"realcombat.record.dir.stab": "a thrust, point forward"
+	"realcombat.record.dir.stab": "a thrust, point forward",
+	"realcombat.config.killSeverChance": "Killing blow takes the limb, %",
+	"realcombat.config.lowHealthSever": "Limbs off the nearly dead too"
 }

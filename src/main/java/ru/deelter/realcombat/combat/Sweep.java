@@ -20,7 +20,40 @@ public final class Sweep {
 	 */
 	public static double[] angles(Entity viewer, Vec3 point) {
 		Vec3 eye = viewer.getEyePosition();
-		return Arc.angles(eye.x, eye.y, eye.z, viewer.getYRot(), viewer.getXRot(), point.x, point.y, point.z);
+		float[] view = view(viewer);
+		return Arc.angles(eye.x, eye.y, eye.z, view[0], view[1], point.x, point.y, point.z);
+	}
+
+	/**
+	 * the client's own way to the head of a VR player it draws (set by the client; null off its thread)
+	 */
+	public static java.util.function.Function<Entity, float[]> clientView = entity -> null;
+
+	/**
+	 * Where a fighter looks, [yaw, pitch]: for a VR player where his head looks. Vivecraft turns a VR player (his
+	 * crosshair, his "look") with the sword hand, which says nothing of where he faces.
+	 */
+	public static float[] view(Entity entity) {
+		if (entity instanceof net.minecraft.world.entity.player.Player player && ru.deelter.realcombat.compat.Vivecraft.LOADED) {
+			float[] client = clientView.apply(entity);
+			if (client != null) return client;
+			ru.deelter.realcombat.compat.Vivecraft.Hand head = ru.deelter.realcombat.compat.Vivecraft.head(player);
+			if (head != null) return yawPitch(head.dir());
+		}
+		return new float[]{entity.getYRot(), entity.getXRot()};
+	}
+
+	public static float[] yawPitch(Vec3 dir) {
+		Vec3 d = dir.normalize();
+		return new float[]{(float) Math.toDegrees(Math.atan2(-d.x, d.z)), (float) Math.toDegrees(-Math.asin(Math.clamp(d.y, -1, 1)))};
+	}
+
+	/**
+	 * the way a fighter looks, as a vector, by {@link #view}
+	 */
+	public static Vec3 viewVector(Entity entity) {
+		float[] view = view(entity);
+		return Vec3.directionFromRotation(view[1], view[0]);
 	}
 
 	/**

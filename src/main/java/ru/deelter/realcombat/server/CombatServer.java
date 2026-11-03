@@ -185,6 +185,8 @@ public final class CombatServer {
 
 	public static void init() {
 		ServerPlayNetworking.registerGlobalReceiver(ActionPayload.TYPE, (payload, context) -> act(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(ru.deelter.realcombat.net.BladePayload.TYPE, (payload, context) ->
+				VrBlades.report(context.player(), payload.x(), payload.y(), payload.z(), context.server().getTickCount()));
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			FIGHTERS.remove(handler.getPlayer().getUUID());
 			MODDED.remove(handler.getPlayer().getUUID());
@@ -367,19 +369,30 @@ public final class CombatServer {
 		if (!harmable(player, target)) return;
 		Fighter defender = target instanceof ServerPlayer p ? FIGHTERS.get(p.getUUID()) : null;
 		boolean facing = Sweep.facing(target, player, r);
-		boolean guarding = defender != null && defender.isVr() && VrBlades.blocks((ServerPlayer) target, player.getEyePosition(), Sweep.closest(player, target));
+		// a VR defender parries with his blade in the way of the attacker's blade, not near the line of the blow
+		boolean guarding = defender != null && defender.isVr() && VrBlades.meets((ServerPlayer) target, player, f, r);
 		// a waiting blow is judged with the direction it was swung in, even if the attacker swung again since
 		Dir now = f.getDir();
 		f.setDir(dir);
 		Outcome outcome = Rules.blow(f, defender, facing, target.isBlocking(), guarding, damage, r);
 		if (f.getPhase() != Phase.RECOVERY || outcome == Outcome.HIT) f.setDir(now);
 		effects(player, target, outcome);
-		if (outcome == Outcome.HIT) deal(player, target, dir, damage);
+		// a side slash carries its line through the neck and the legs, as a VR one does
+		if (outcome == Outcome.HIT) deal(player, target, dir, damage, null, null, dir.horizontal());
 		if (outcome == Outcome.PARRY_BROKEN && target.isBlocking()) breakShield(target);
 		if (defender != null && defender.isDirty() && target instanceof ServerPlayer p) send(p, defender);
 	}
 
 	public static void deal(ServerPlayer player, LivingEntity target, Dir dir, float damage) {
+		deal(player, target, dir, damage, null, null, false);
+	}
+
+	/**
+	 * @param from    where the blade came into the body (a VR blade), null for the attacker's eyes
+	 * @param along   the way it came, null for the attacker's look
+	 * @param vrSlash a strong side slash of a VR blade, for ChopChop
+	 */
+	public static void deal(ServerPlayer player, LivingEntity target, Dir dir, float damage, Vec3 from, Vec3 along, boolean vrSlash) {
 		ServerLevel level = player.level();
 		ItemStack weapon = player.getMainHandItem();
 		DamageSource source = player.damageSources().playerAttack(player);
@@ -398,7 +411,7 @@ public final class CombatServer {
 		player.setLastHurtMob(target);
 		weapon.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
 		try {
-			bodies.struck(player, target, dir, Sweep.swing(player, dir), damage, !target.isAlive());
+			bodies.struck(player, target, dir, along != null ? along : Sweep.swing(player, dir), damage, !target.isAlive(), from, along, vrSlash);
 		} catch (Throwable e) {
 			ru.deelter.realcombat.RealCombat.LOG.warn("Body hook failed", e);
 		}

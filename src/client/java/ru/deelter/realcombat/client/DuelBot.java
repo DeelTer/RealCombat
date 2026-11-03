@@ -105,11 +105,11 @@ public final class DuelBot {
 		if (player == null || mc.level == null) return;
 		stop();
 		difficulty = level;
-		Vec3 look = player.getViewVector(1f).horizontal().normalize();
+		Vec3 look = Sweep.viewVector(player).horizontal().normalize();
 		Vec3 at = player.position().add(look.scale(3.5));
 		bot = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "Sparring"));
 		bot.setId(ID);
-		bot.snapTo(at.x, ground(mc.level, at, player.getY()), at.z, player.getYRot() + 180, 0);
+		bot.snapTo(at.x, ground(mc.level, at, player.getY()), at.z, Sweep.view(player)[0] + 180, 0);
 		bot.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
 		mc.level.addEntity(bot);
 		fighter = new Fighter(ClientCombat.getRules().getMaxStamina());
@@ -286,7 +286,9 @@ public final class DuelBot {
 		float damage = SWORD_DAMAGE * fighter.getWeapon().damage(fighter.getDir());
 		// a VR player parries with his blade held across the blow
 		boolean vr = VrClient.active();
-		boolean guarding = vr && VrHand.blocks(bot.getEyePosition(), player.getBoundingBox().getCenter());
+		Vec3 botEye = bot.getEyePosition();
+		boolean guarding = vr && ru.deelter.realcombat.combat.BladeProxy.meets(botEye.x, botEye.y, botEye.z, bot.getYRot(), bot.getXRot(), fighter, rules,
+				VrHand.segment(), CombatConfig.getInstance().getCompat().getVrBladeRadius());
 		Outcome outcome = Rules.blow(fighter, ClientCombat.handles() || vr ? own : null, Sweep.facing(player, bot, rules), player.isBlocking(), guarding, damage, rules);
 		if (vr && outcome != Outcome.HIT) VrClient.buzz(0.8f);
 		feedback(bot, player, outcome);

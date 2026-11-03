@@ -12,7 +12,7 @@ import ru.deelter.realcombat.config.CombatConfig;
 import java.util.Collection;
 
 /**
- * {@code /realcombat enable|disable <players>} and {@code /realcombat reload}, for operators.
+ * {@code /realcombatadmin enable|disable <players>} and {@code /realcombatadmin reload}, for operators.
  */
 final class Commands {
 	private Commands() {
@@ -20,7 +20,7 @@ final class Commands {
 
 	static void init() {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) -> dispatcher.register(
-				net.minecraft.commands.Commands.literal("realcombat")
+				net.minecraft.commands.Commands.literal("realcombatadmin")
 						.requires(net.minecraft.commands.Commands.hasPermission(net.minecraft.commands.Commands.LEVEL_GAMEMASTERS))
 						.then(net.minecraft.commands.Commands.literal("enable")
 								.then(net.minecraft.commands.Commands.argument("players", EntityArgument.players()).executes(c -> set(c, true))))

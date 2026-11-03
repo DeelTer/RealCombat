@@ -17,6 +17,7 @@ public final class Protocol {
 	public static final String ACTION = "realcombat:action";
 	public static final String STATE = "realcombat:state";
 	public static final String RULES = "realcombat:rules";
+	public static final String BLADE = "realcombat:blade";
 	public static final int MAX_RULES = 1 << 15;
 
 	private Protocol() {
@@ -93,6 +94,22 @@ public final class Protocol {
 			int flags = in.readByte();
 			return new StateMessage(entity, phase, dir, ticks, length, stamina, (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, (flags & 8) != 0);
 		});
+	}
+
+	/**
+	 * Client to server, every tick while in VR with a weapon: the way the sword in the hand points, as drawn. The
+	 * server gets the controller's aim from Vivecraft, but the sword is held at an angle to it.
+	 */
+	public static byte[] blade(float x, float y, float z) {
+		return write(out -> {
+			out.writeFloat(x);
+			out.writeFloat(y);
+			out.writeFloat(z);
+		});
+	}
+
+	public static float[] blade(byte[] data) {
+		return read(data, in -> new float[]{in.readFloat(), in.readFloat(), in.readFloat()});
 	}
 
 	/**

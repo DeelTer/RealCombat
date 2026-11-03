@@ -47,6 +47,19 @@ public final class Vivecraft {
 		}
 	}
 
+	/**
+	 * the head of a VR player: where it is and where it looks
+	 */
+	public static @Nullable Hand head(Player player) {
+		if (!LOADED || broken) return null;
+		try {
+			return Common.head(player);
+		} catch (Throwable e) {
+			fail(e);
+			return null;
+		}
+	}
+
 	static void fail(Throwable e) {
 		if (broken) return;
 		broken = true;
@@ -60,6 +73,13 @@ public final class Vivecraft {
 	private static final class Common {
 		static boolean isVrPlayer(Player player) {
 			return VRAPI.instance().isVRPlayer(player);
+		}
+
+		static Hand head(Player player) {
+			if (!VRAPI.instance().isVRPlayer(player)) return null;
+			VRPose pose = VRAPI.instance().getVRPose(player);
+			VRBodyPartData head = pose == null ? null : pose.getHead();
+			return head == null ? null : new Hand(head.getPos(), head.getDir());
 		}
 
 		static Hand mainHand(Player player) {

@@ -60,7 +60,7 @@ public class PaperClientGameTest implements FabricClientGameTest {
 		Path settings = consoleFile.resolveSibling("plugins/RealCombat/realcombat.json");
 		String usual = read(settings);
 		write(settings, usual.replaceFirst("\"parry\": \\d+", "\"parry\": 100"));
-		run(consoleFile, "realcombat reload");
+		run(consoleFile, "realcombatadmin reload");
 		context.waitTicks(40);
 		float health = context.computeOnClient(client -> client.player.getHealth());
 		context.runOnClient(client -> ClientCombat.parry());
@@ -71,15 +71,15 @@ public class PaperClientGameTest implements FabricClientGameTest {
 		if (parried < health) throw new AssertionError("a parried blow hurt: " + health + " -> " + parried);
 
 		write(settings, usual);
-		run(consoleFile, "realcombat reload");
+		run(consoleFile, "realcombatadmin reload");
 		// the same blow without a parry lands
 		context.waitTicks(130);
 		run(consoleFile, "damage @p 4 minecraft:mob_attack by @e[tag=rc,limit=1]");
 		context.waitFor(client -> client.player.getHealth() < health, 60);
 		// the mechanic turned off and on, as for an arena: the client follows
-		run(consoleFile, "realcombat disable @a");
+		run(consoleFile, "realcombatadmin disable @a");
 		context.waitFor(client -> !ClientCombat.getRules().isEnabled() && !ClientCombat.handles(), 100);
-		run(consoleFile, "realcombat enable @a");
+		run(consoleFile, "realcombatadmin enable @a");
 		context.waitFor(client -> ClientCombat.getRules().isEnabled() && ClientCombat.handles(), 100);
 		run(consoleFile, "kill @e[tag=rc]");
 		context.runOnClient(client -> client.disconnect(new TitleScreen(), false));

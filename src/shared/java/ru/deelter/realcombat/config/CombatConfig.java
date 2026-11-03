@@ -222,12 +222,26 @@ public final class CombatConfig {
 		 * ChopChop: cuts where blows land, limbs off for heavy ones
 		 */
 		private boolean chopchop = true;
-		private float severDamage = 9f;
-		private float severChance = 0.35f;
 		/**
-		 * a killing overhead into the head takes it off
+		 * as in Mordhau: the killing blow takes the limb it landed on with this chance, and a killing slash at the head
+		 * takes the head
 		 */
+		private float killSeverChance = 0.75f;
 		private boolean decapitate = true;
+		/**
+		 * a blow at a living fighter left with less than lowHealthShare of his health takes the limb too, with
+		 * severChance: harsh in PvP (no sword hand, no fighting), off by default
+		 */
+		private boolean lowHealthSever = false;
+		/**
+		 * a side slash (right to left, left to right: a mouse blow, or a strong VR one) through the neck or the legs of
+		 * one left with less than sideSeverShare of his health takes them off with this chance (the head kills)
+		 */
+		private boolean sideSever = true;
+		private float sideSeverShare = 0.5f;
+		private float sideSeverChance = 0.4f;
+		private float lowHealthShare = 0.25f;
+		private float severChance = 0.35f;
 	}
 
 	private static final System.Logger LOG = System.getLogger("RealCombat");

@@ -35,6 +35,7 @@ public final class VrHand {
 	private static Vec3 stuckAt;
 	private static long lastGrind;
 	private static Vec3 tipBefore;
+	private static int stuckCorpse = -1;
 	/**
 	 * where the tip is and how it moves, blocks per tick, for the sparring partner to read
 	 */
@@ -54,6 +55,13 @@ public final class VrHand {
 
 	public static double tipSpeed() {
 		return tipMotion.length();
+	}
+
+	/**
+	 * the own VR blade as it is now, or null
+	 */
+	public static Blade.Segment segment() {
+		return blade == null ? null : blade.segment();
 	}
 
 	/**
@@ -105,6 +113,10 @@ public final class VrHand {
 				}
 			}
 		}
+		// ChopChop's dead bodies, on the client only: the blade meets them, slides on them and cuts them
+		int living = bodies.size();
+		List<Corpses.Body> corpses = Corpses.near(area);
+		for (Corpses.Body corpse : corpses) bodies.add(box(corpse.box()));
 		// the sparring partner's blade, while it parries or swings
 		int botBlade = -1;
 		Blade.Segment theirs = DuelBot.blade();
@@ -115,7 +127,14 @@ public final class VrHand {
 		List<Blade.Box> solids = ru.deelter.realcombat.combat.Sweep.solidBlocks(mc.level, area);
 		// the spring is set per tick; a frame makes its share of a tick's way
 		double follow = 1 - Math.pow(1 - compat.getVrFollow(), ticks);
-		if (blade.isLodged()) {
+		if (blade.isLodged() && stuckCorpse >= 0) {
+			// stuck in a dead body: it lies still; when it is gone, so is the hold
+			int id = stuckCorpse;
+			if (corpses.stream().noneMatch(c -> c.id() == id)) {
+				blade.unlodge();
+				stuckCorpse = -1;
+			}
+		} else if (blade.isLodged()) {
 			if (stuckIn == null || !stuckIn.isAlive() || stuckIn.isRemoved()) {
 				blade.unlodge();
 				stuckIn = null;
@@ -132,13 +151,32 @@ public final class VrHand {
 		double speed = result.speed() / Math.max(ticks, 1e-3);
 		tip = vec(blade.tip());
 		tipMotion = motion.scale(1 / Math.max(ticks, 1e-3));
-		boolean onBot = result.contact() == Blade.Contact.BODY && owners.get(result.index()) == DuelBot.entity();
+		boolean onCorpse = result.contact() == Blade.Contact.BODY && result.index() >= living;
+		boolean onBot = result.contact() == Blade.Contact.BODY && !onCorpse && owners.get(result.index()) == DuelBot.entity();
 		tipBefore = vec(blade.tip());
 		switch (result.contact()) {
 			case BODY -> {
 				// point first and fast: the blade goes in and sticks, as on the server
 				boolean thrust = compat.isVrStab() && speed >= compat.getVrSwingSpeed() * 0.55 && motion.lengthSqr() > 1e-8
 						&& motion.normalize().dot(hand.dir().normalize()) > 0.7;
+				if (onCorpse) {
+					Corpses.Body corpse = corpses.get(result.index() - living);
+					// a fast pass cuts the body where the blade meets it; ChopChop's server decides the cut
+					if (thrust || speed >= compat.getVrSwingSpeed()) {
+						Corpses.cut(corpse.id(), vec(blade.getHand()), vec(blade.getDir()), blade.getLength() + 0.2);
+					}
+					if (thrust) {
+						blade.lodge(compat.getVrStabDepth());
+						stuckCorpse = corpse.id();
+						VrClient.buzz(0.8f);
+						touching = true;
+						return;
+					}
+					grind(now, 0.08f);
+					if (!touching) VrClient.buzz((float) Math.min(0.6, speed / compat.getVrSwingSpeed()));
+					touching = true;
+					return;
+				}
 				// the sparring partner lives on this client only: its cuts are counted here
 				if (onBot && (thrust || speed >= compat.getVrSwingSpeed())) DuelBot.vrStrike(thrust ? ru.deelter.realcombat.combat.Dir.STAB : classify(player, motion), speed / compat.getVrSwingSpeed());
 				if (thrust) {
@@ -152,15 +190,13 @@ public final class VrHand {
 			}
 			case LODGED -> {
 				// a light grind while the blade moves in the wound
-				if (result.speed() > 0.004 && now - lastGrind > 60_000_000L) {
-					lastGrind = now;
-					VrClient.buzz(0.15f);
-				}
+				if (result.speed() > 0.004) grind(now, 0.15f);
 				return;
 			}
 			case FREED -> {
 				if (stuckIn != null && stuckIn == DuelBot.entity()) DuelBot.vrPullOut();
 				stuckIn = null;
+				stuckCorpse = -1;
 				VrClient.buzz(0.7f);
 				touching = false;
 				return;
@@ -177,8 +213,17 @@ public final class VrHand {
 		touching = touch;
 	}
 
+	/**
+	 * a light buzz, at most every 60 ms, while the blade grinds on or in a body
+	 */
+	private static void grind(long now, float strength) {
+		if (now - lastGrind < 60_000_000L) return;
+		lastGrind = now;
+		VrClient.buzz(strength);
+	}
+
 	private static ru.deelter.realcombat.combat.Dir classify(LocalPlayer player, Vec3 motion) {
-		Vec3 look = player.getViewVector(1f);
+		Vec3 look = ru.deelter.realcombat.combat.Sweep.viewVector(player);
 		Vec3 right = look.cross(new Vec3(0, 1, 0)).normalize();
 		double side = motion.dot(right);
 		double up = motion.y;

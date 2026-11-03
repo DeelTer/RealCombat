@@ -6,12 +6,14 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.util.Vector;
 import ru.deelter.chopchop.paper.api.ChopChopApi;
 import ru.deelter.realcombat.combat.Dir;
+import ru.deelter.realcombat.combat.Dismember;
 import ru.deelter.realcombat.config.CombatConfig;
 
 /**
  * ChopChop's Paper API: we tell it where the blade went, as the Fabric side does. Only loaded when ChopChop is there.
  */
 final class ChopChopBodies implements Bodies {
+	private static final java.util.Random RANDOM = new java.util.Random();
 	private ChopChopBodies() {
 	}
 
@@ -42,19 +44,15 @@ final class ChopChopBodies implements Bodies {
 		CombatConfig.Compat compat = CombatConfig.getInstance().getCompat();
 		ChopChopApi.BodySpot spot = ChopChopApi.locate(target, attacker.getEyeLocation(), attacker.getEyeLocation().getDirection(), 5, true);
 		if (spot == null) return;
-		if (killed && compat.isDecapitate() && dir == Dir.OVERHEAD && spot.part().equals("head")) {
-			ChopChopApi.sever(target, "head", 0, attacker, false);
-			return;
-		}
-		if (dir == Dir.STAB) {
-			ChopChopApi.wound(target, spot, ChopChopApi.WoundShape.hole(1.2 + damage * 0.08, 2), attacker);
-			return;
-		}
-		boolean heavy = damage >= compat.getSeverDamage() || killed;
-		if (heavy && !spot.part().equals("body") && Math.random() < compat.getSeverChance()) {
-			ChopChopApi.sever(target, spot, attacker, false);
-		} else {
-			ChopChopApi.wound(target, spot, ChopChopApi.WoundShape.cut(swing, 4 + damage * 0.5, 1.4, damage > 6 ? 2 : 1), attacker);
+		double max = target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) == null ? 20 : target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+		float share = (float) (target.getHealth() / Math.max(1, max));
+		switch (Dismember.decide(spot.part(), dir, killed, share, dir.horizontal(), compat, RANDOM)) {
+			case HEAD -> ChopChopApi.sever(target, "head", 0, attacker, false);
+			case SEVER -> ChopChopApi.sever(target, spot, attacker, false);
+			case WOUND -> {
+				if (dir == Dir.STAB) ChopChopApi.wound(target, spot, ChopChopApi.WoundShape.hole(1.2 + damage * 0.08, 2), attacker);
+				else ChopChopApi.wound(target, spot, ChopChopApi.WoundShape.cut(swing, 4 + damage * 0.5, 1.4, damage > 6 ? 2 : 1), attacker);
+			}
 		}
 	}
 }

@@ -59,7 +59,29 @@ final class VrBlades {
 	private VrBlades() {
 	}
 
+	/**
+	 * the way each VR player's sword points as his client draws it, and the tick it was said
+	 */
+	private static final Map<UUID, Vec3> REPORTED = new HashMap<>();
+	private static final Map<UUID, Integer> REPORTED_AT = new HashMap<>();
+
+	static void report(ServerPlayer player, float x, float y, float z, int now) {
+		Vec3 dir = new Vec3(x, y, z);
+		double length = dir.length();
+		// a direction, nothing else: anything else is ignored
+		if (!Double.isFinite(length) || length < 0.5 || length > 2) return;
+		REPORTED.put(player.getUUID(), dir.scale(1 / length));
+		REPORTED_AT.put(player.getUUID(), now);
+	}
+
+	private static Vec3 bladeDir(ServerPlayer player, Vivecraft.Hand hand, int now) {
+		Integer at = REPORTED_AT.get(player.getUUID());
+		return at != null && now - at <= 10 ? REPORTED.get(player.getUUID()) : hand.dir().normalize();
+	}
+
 	static void forget(UUID player) {
+		REPORTED.remove(player);
+		REPORTED_AT.remove(player);
 		BLADES.remove(player);
 		LODGED.remove(player);
 		LODGED_AT.remove(player);
@@ -111,9 +133,10 @@ final class VrBlades {
 				LODGED.remove(player.getUUID());
 			}
 		}
-		Blade.Result result = blade.step(v(hand.pos()), v(hand.dir().normalize()), boxes, blades, solids, compat.getVrFollow(), compat.getVrMaxStretch());
+		Vec3 swordDir = bladeDir(player, hand, now);
+		Blade.Result result = blade.step(v(hand.pos()), v(swordDir), boxes, blades, solids, compat.getVrFollow(), compat.getVrMaxStretch());
 		// without a body the blade is wherever the hand is, and only finds what it crossed
-		if (!compat.isVrPhysics()) blade.place(v(hand.pos()), v(hand.dir().normalize()));
+		if (!compat.isVrPhysics()) blade.place(v(hand.pos()), v(swordDir));
 		Vec3 tip = vec(blade.tip());
 		TIPS.put(player.getUUID(), tip);
 		float threshold = compat.getVrSwingSpeed();
@@ -124,11 +147,15 @@ final class VrBlades {
 				Integer last = struck.get(target.getId());
 				Vec3 motion = vec(result.at()).subtract(tipBefore);
 				// point first, along the blade: a thrust, which goes in and sticks; it is slower than a cut
-				boolean thrust = compat.isVrStab() && motion.lengthSqr() > 1e-6 && motion.normalize().dot(hand.dir().normalize()) > 0.7;
+				boolean thrust = compat.isVrStab() && motion.lengthSqr() > 1e-6 && motion.normalize().dot(swordDir) > 0.7;
 				if (result.speed() < threshold * (thrust ? THRUST_SPEED : 1) || (last != null && now - last < RECUT_TICKS)) return;
 				struck.put(target.getId(), now);
 				Dir dir = thrust ? Dir.STAB : classify(player, motion);
-				Outcome outcome = cut(player, f, target, dir, result.speed() / threshold, fighters, r);
+				// for ChopChop: where the tip came in, the way it moved, and a strong side slash for the neck and the legs
+				Vec3 way = motion.lengthSqr() > 1e-8 ? motion.normalize() : swordDir;
+				Vec3 at = vec(result.at());
+				boolean slash = dir.horizontal() && result.speed() / threshold >= 1.3;
+				Outcome outcome = cut(player, f, target, dir, result.speed() / threshold, fighters, r, at.subtract(way.scale(0.5)), way, slash);
 				if (thrust && outcome == Outcome.HIT && target.isAlive()) {
 					blade.lodge(compat.getVrStabDepth());
 					LODGED.put(player.getUUID(), target.getId());
@@ -160,7 +187,8 @@ final class VrBlades {
 		}
 	}
 
-	private static Outcome cut(ServerPlayer player, Fighter f, LivingEntity target, Dir dir, double force, Map<UUID, Fighter> fighters, CombatConfig.Rules r) {
+	private static Outcome cut(ServerPlayer player, Fighter f, LivingEntity target, Dir dir, double force, Map<UUID, Fighter> fighters, CombatConfig.Rules r,
+							   Vec3 from, Vec3 along, boolean slash) {
 		if (f.getPhase() == Phase.STUN || !CombatServer.harmable(player, target)) return Outcome.BLOCKED;
 		f.setDir(dir);
 		Fighter defender = target instanceof ServerPlayer p ? fighters.get(p.getUUID()) : null;
@@ -169,7 +197,7 @@ final class VrBlades {
 		Outcome outcome = Rules.blow(f, defender != null && !defender.isVr() ? defender : null, Sweep.facing(target, player, r),
 				target.isBlocking(), false, damage, r);
 		CombatServer.effects(player, target, outcome);
-		if (outcome == Outcome.HIT) CombatServer.deal(player, target, dir, damage);
+		if (outcome == Outcome.HIT) CombatServer.deal(player, target, dir, damage, from, along, slash);
 		if (defender != null && target instanceof ServerPlayer p) CombatServer.send(p, defender);
 		// a VR blade is not stopped by a recoil: the hand goes on
 		if (f.getPhase() == Phase.RECOVERY) f.enter(Phase.IDLE, 1);
@@ -199,6 +227,17 @@ final class VrBlades {
 	}
 
 	/**
+	 * The VR defender's blade is in the way of a mouse player's swinging blade this tick.
+	 */
+	static boolean meets(ServerPlayer defender, ServerPlayer attacker, Fighter swing, CombatConfig.Rules r) {
+		Blade blade = BLADES.get(defender.getUUID());
+		if (blade == null) return false;
+		Vec3 eye = attacker.getEyePosition();
+		float[] view = Sweep.view(attacker);
+		return BladeProxy.meets(eye.x, eye.y, eye.z, view[0], view[1], swing, r, blade.segment(), CombatConfig.getInstance().getCompat().getVrBladeRadius());
+	}
+
+	/**
 	 * The VR defender holds his blade across a mouse player's blow from {@code from} to {@code to}.
 	 */
 	static boolean blocks(ServerPlayer defender, Vec3 from, Vec3 to) {
@@ -209,7 +248,7 @@ final class VrBlades {
 	}
 
 	private static Dir classify(ServerPlayer player, Vec3 motion) {
-		Vec3 look = player.getViewVector(1f);
+		Vec3 look = Sweep.viewVector(player);
 		Vec3 right = look.cross(new Vec3(0, 1, 0)).normalize();
 		double forward = motion.dot(look);
 		double side = motion.dot(right);
