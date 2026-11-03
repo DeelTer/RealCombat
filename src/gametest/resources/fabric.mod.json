@@ -1,0 +1,18 @@
+{
+	"schemaVersion": 1,
+	"id": "realcombat-gametest",
+	"version": "1.0.0",
+	"name": "RealCombat game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"ru.deelter.realcombat.gametest.PoseClientGameTest",
+			"ru.deelter.realcombat.gametest.ServerClientGameTest",
+			"ru.deelter.realcombat.gametest.PvpClientGameTest",
+			"ru.deelter.realcombat.gametest.PaperClientGameTest"
+		]
+	},
+	"depends": {
+		"realcombat": "*"
+	}
+}

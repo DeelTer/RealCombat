@@ -1,0 +1,150 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
+}
+
+// the versions of Minecraft and of the mods built against depend on the Minecraft version that is built for
+def versionFile = file("versions/${project.mc}.properties")
+if (!versionFile.exists()) {
+    throw new GradleException("No versions/${project.mc}.properties, can't build for Minecraft ${project.mc}")
+}
+def versionProperties = new Properties()
+versionFile.withInputStream { versionProperties.load(it) }
+versionProperties.each { key, value -> project.ext.set(key, value) }
+
+version = "${project.mod_version}+${project.minecraft_version}"
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            // the rules, the bot and the protocol: the same source the Paper plugin is built with
+            srcDir 'src/shared/java'
+        }
+    }
+}
+
+// one build gives everything: the mod and the server plugin
+tasks.named('build') {
+    dependsOn ':plugin:build'
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "realcombat" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    compileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+    clientCompileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    clientAnnotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+
+    // optional: limbs off and cuts where the blade landed. -PnoChopChop runs the game without it
+    def chopchop = files(project.chopchop_jar)
+    compileOnly chopchop
+    if (!project.hasProperty("noChopChop") && file(project.chopchop_jar).exists()) {
+        runtimeOnly chopchop
+    }
+
+    // optional, for the settings screen. -PnoCloth runs the game without it
+    if (project.hasProperty("noCloth")) {
+        clientCompileOnly "maven.modrinth:cloth-config:${project.cloth_config_version}"
+    } else {
+        clientImplementation "maven.modrinth:cloth-config:${project.cloth_config_version}"
+    }
+    clientCompileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
+
+    // Vivecraft: its API is reached by reflection (ru.deelter.realcombat.compat.Vivecraft); the jar is here to check it
+    // against and for the optional mixin into its hand renderer. -PwithVivecraft runs the game with it
+    compileOnly "maven.modrinth:vivecraft:${project.vivecraft_version}"
+    if (project.hasProperty("withVivecraft")) {
+        runtimeOnly "maven.modrinth:vivecraft:${project.vivecraft_version}"
+    }
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+}
+
+// runClientGameTest builds a world, holds every swing pose on the sparring partner and on the player, and takes
+// screenshots into build/run/clientGameTest/screenshots
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "realcombat-gametest"
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = true
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "loader_version": project.loader_version
+    }
+}
+
+def targetJavaVersion = 25
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release.set(targetJavaVersion)
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    withSourcesJar()
+}
+
+// gradlew runClientGameTest -PpaperPort=25599 -PpaperConsole=run-paper/cmd.txt: the client tests against a Paper
+// server with the plugin instead of singleplayer and a Fabric server
+// -ProllAxes: the pose test also shows a side slash with the sword turned about each axis
+if (project.hasProperty("rollAxes")) {
+    loom.runs.matching { it.name == "clientGameTest" }.configureEach {
+        vmArg "-Drealcombat.rollAxes=true"
+    }
+}
+if (project.hasProperty("paperPort")) {
+    loom.runs.matching { it.name == "clientGameTest" }.configureEach {
+        vmArg "-Drealcombat.paperPort=${project.paperPort}"
+        vmArg "-Drealcombat.paperConsole=${file(project.paperConsole).absolutePath}"
+    }
+}

@@ -1,0 +1,16 @@
+name: RealCombat
+version: '${version}'
+main: ru.deelter.realcombat.paper.RealCombatPlugin
+api-version: '1.21.4'
+author: DeelTer
+description: Server side of the RealCombat mod, directional melee with parries, ripostes, feints and kicks
+softdepend: [ChopChop]
+commands:
+  realcombat:
+    description: Manage RealCombat
+    usage: /realcombat <reload|enable <players>|disable <players>>
+    permission: realcombat.admin
+permissions:
+  realcombat.admin:
+    description: Use /realcombat
+    default: op

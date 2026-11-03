@@ -1,0 +1,47 @@
+{
+	"schemaVersion": 1,
+	"id": "realcombat",
+	"version": "${version}",
+	"name": "RealCombat",
+	"description": "Directional melee in the spirit of Mordhau and Chivalry: windups you can read, parries, ripostes, feints, chambers, kicks and stamina",
+	"authors": [
+		"DeelTer"
+	],
+	"contact": {},
+	"license": "All-Rights-Reserved",
+	"icon": "assets/realcombat/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"ru.deelter.realcombat.RealCombat"
+		],
+		"client": [
+			"ru.deelter.realcombat.client.RealCombatClient"
+		],
+		"modmenu": [
+			"ru.deelter.realcombat.client.gui.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"realcombat.mixins.json",
+		{
+			"config": "realcombat.client.mixins.json",
+			"environment": "client"
+		},
+		{
+			"config": "realcombat.vivecraft.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=${loader_version}",
+		"fabric-api": "*",
+		"minecraft": "${minecraft_version}"
+	},
+	"suggests": {
+		"chopchop": "*",
+		"cloth-config": "*",
+		"modmenu": "*",
+		"vivecraft": "*"
+	}
+}

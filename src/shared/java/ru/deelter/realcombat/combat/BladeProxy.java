@@ -1,0 +1,50 @@
+package ru.deelter.realcombat.combat;
+
+import ru.deelter.realcombat.config.CombatConfig;
+
+/**
+ * Where the blade of a fighter without VR is, drawn from his phase as the arm is drawn: across the face in a parry,
+ * along the arc of the swing in a release, nowhere it could be touched otherwise. A VR blade meets it as it meets
+ * another VR blade. Used by the server for players and by the client for the sparring partner.
+ */
+public final class BladeProxy {
+	private static final double LENGTH = 1.3;
+
+	private BladeProxy() {
+	}
+
+	/**
+	 * @param yaw   the fighter's look, Minecraft degrees
+	 * @param pitch the fighter's look, Minecraft degrees
+	 */
+	public static Blade.Segment of(double eyeX, double eyeY, double eyeZ, float yaw, float pitch, Fighter f, CombatConfig.Rules r, double radius) {
+		if (f.getPhase() != Phase.PARRY && f.getPhase() != Phase.RELEASE) return null;
+		double ry = Math.toRadians(yaw);
+		double rp = Math.toRadians(pitch);
+		Blade.V look = new Blade.V(-Math.sin(ry) * Math.cos(rp), -Math.sin(rp), Math.cos(ry) * Math.cos(rp));
+		// right of the look, level; and up, square to both
+		Blade.V right = new Blade.V(-Math.cos(ry), 0, -Math.sin(ry));
+		Blade.V up = cross(right, look);
+		Blade.V eye = new Blade.V(eyeX, eyeY, eyeZ);
+		if (f.getPhase() == Phase.PARRY) {
+			Blade.V center = eye.add(look.scale(0.6)).sub(up.scale(0.05));
+			return new Blade.Segment(center.sub(right.scale(0.45)), center.add(right.scale(0.45)), radius);
+		}
+		Blade.V shoulder = eye.sub(up.scale(0.35)).add(right.scale(0.3));
+		double half = r.getSlashArc() / 2;
+		double p = f.progress();
+		double angle = Math.toRadians(switch (f.getDir()) {
+			case RIGHT, UNDER -> half - r.getSlashArc() * p;
+			case LEFT, OVERHEAD -> -half + r.getSlashArc() * p;
+			case STAB -> 0;
+		});
+		Blade.V dir = f.getDir().horizontal()
+				? look.scale(Math.cos(angle)).add(right.scale(Math.sin(angle)))
+				: look.scale(Math.cos(angle)).sub(up.scale(Math.sin(angle)));
+		return new Blade.Segment(shoulder, shoulder.add(dir.scale(LENGTH)), radius);
+	}
+
+	private static Blade.V cross(Blade.V a, Blade.V b) {
+		return new Blade.V(a.y() * b.z() - a.z() * b.y(), a.z() * b.x() - a.x() * b.z(), a.x() * b.y() - a.y() * b.x());
+	}
+}

@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "ru.deelter.realcombat.mixin.client.vivecraft",
+	"plugin": "ru.deelter.realcombat.mixin.client.vivecraft.VivecraftMixinPlugin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"RenderHelperMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
