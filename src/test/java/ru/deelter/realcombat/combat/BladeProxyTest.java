@@ -35,4 +35,22 @@ class BladeProxyTest {
 	void noBladeWhenIdle() {
 		assertNull(BladeProxy.of(0, 0, 0, 0, 0, new Fighter(100), rules, 0.06));
 	}
+
+	@Test
+	void aBladeInTheWayMeetsTheSwingAndOneBesideItDoesNot() {
+		Fighter f = new Fighter(100);
+		f.setDir(Dir.OVERHEAD);
+		f.enter(Phase.RELEASE, 4);
+		f.setTicks(2);
+		// looking south: the overhead comes down in front, along z; a blade held across it at about 1 block ahead
+		Blade.Segment across = new Blade.Segment(new Blade.V(-0.5, -0.4, 0.9), new Blade.V(0.5, -0.4, 0.9), 0.06);
+		Blade.Segment beside = new Blade.Segment(new Blade.V(1.5, -0.4, 0.9), new Blade.V(2.5, -0.4, 0.9), 0.06);
+		boolean any = false;
+		for (int tick = 1; tick <= 4; tick++) {
+			f.setTicks(tick);
+			any |= BladeProxy.meets(0, 0, 0, 0, 0, f, rules, across, 0.06);
+			assertTrue(!BladeProxy.meets(0, 0, 0, 0, 0, f, rules, beside, 0.06), "a blade off to the side does not parry");
+		}
+		assertTrue(any, "a blade held across the swing parries it");
+	}
 }

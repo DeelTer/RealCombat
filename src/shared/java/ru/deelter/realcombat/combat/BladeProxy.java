@@ -44,6 +44,34 @@ public final class BladeProxy {
 		return new Blade.Segment(shoulder, shoulder.add(dir.scale(LENGTH)), radius);
 	}
 
+	/**
+	 * The blade of a swing meets a blade held in its way this tick: the swinging blade, swept over the arc it went
+	 * this tick, passes within the blades' thickness of the held one. A blade only near the line of the blow is not
+	 * enough: it has to be in the blade's way.
+	 */
+	public static boolean meets(double eyeX, double eyeY, double eyeZ, float yaw, float pitch, Fighter f, CombatConfig.Rules r,
+								Blade.Segment held, double radius) {
+		if (f.getPhase() != Phase.RELEASE || held == null) return false;
+		int ticks = f.getTicks();
+		for (int i = 0; i <= SAMPLES; i++) {
+			// the arc from a tick ago to now
+			Fighter at = new Fighter(0);
+			at.setDir(f.getDir());
+			at.enter(Phase.RELEASE, f.getLength());
+			at.setTicks(Math.max(0, ticks - 1));
+			Blade.Segment s = of(eyeX, eyeY, eyeZ, yaw, pitch, at, r, radius);
+			double t = i / (double) SAMPLES;
+			Blade.Segment now = of(eyeX, eyeY, eyeZ, yaw, pitch, f, r, radius);
+			Blade.V a = s.a().lerp(now.a(), t);
+			Blade.V b = s.b().lerp(now.b(), t);
+			if (Blade.distance(a, b, held.a(), held.b()) <= radius + held.radius() + MARGIN) return true;
+		}
+		return false;
+	}
+
+	private static final int SAMPLES = 6;
+	private static final double MARGIN = 0.05;
+
 	private static Blade.V cross(Blade.V a, Blade.V b) {
 		return new Blade.V(a.y() * b.z() - a.z() * b.y(), a.z() * b.x() - a.x() * b.z(), a.x() * b.y() - a.y() * b.x());
 	}
