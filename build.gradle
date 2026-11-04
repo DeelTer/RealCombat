@@ -31,6 +31,8 @@ sourceSets {
         java {
             // the rules, the bot and the protocol: the same source the Paper plugin is built with
             srcDir 'src/shared/java'
+            // the few calls that differ between Minecraft versions, one folder per version
+            srcDir "src/main/java-${project.mc}"
         }
     }
 }
@@ -49,6 +51,22 @@ loom {
             sourceSet sourceSets.client
         }
     }
+
+    // every Minecraft version runs in a folder of its own: a world opened in a newer one can't go back
+    def usualVersion = new Properties()
+    file("gradle.properties").withInputStream { usualVersion.load(it) }
+    runs.configureEach {
+        runDir = project.mc == usualVersion.mc ? "run" : "run-${project.mc}"
+    }
+}
+
+// the client classes that differ between Minecraft versions, like the first person hands: one folder per version
+sourceSets {
+    client {
+        java {
+            srcDir "src/client/java-${project.mc}"
+        }
+    }
 }
 
 dependencies {
@@ -62,10 +80,13 @@ dependencies {
     clientAnnotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
 
     // optional: limbs off and cuts where the blade landed. -PnoChopChop runs the game without it
-    def chopchop = files(project.chopchop_jar)
+    def chopchopJar = project.chopchop_jar.replace('{mc}', project.minecraft_version)
+    // its API is the same on every Minecraft version: without a jar of this version, compile against the usual one
+    if (!file(chopchopJar).exists()) chopchopJar = project.chopchop_jar.replace('{mc}', '26.2')
+    def chopchop = files(chopchopJar)
     compileOnly chopchop
     clientCompileOnly chopchop
-    if (!project.hasProperty("noChopChop") && file(project.chopchop_jar).exists()) {
+    if (!project.hasProperty("noChopChop") && file(chopchopJar).exists() && chopchopJar.contains(project.minecraft_version)) {
         runtimeOnly chopchop
     }
 
@@ -148,4 +169,27 @@ if (project.hasProperty("paperPort")) {
         vmArg "-Drealcombat.paperPort=${project.paperPort}"
         vmArg "-Drealcombat.paperConsole=${file(project.paperConsole).absolutePath}"
     }
+}
+
+// buildAll builds for every Minecraft version there is a file for in versions/, one after the other
+def minecraftVersions = fileTree("versions").matching { include "*.properties" }.files
+        .collect { it.name - ".properties" }.sort()
+def versionBuilds = []
+minecraftVersions.each { minecraftVersion ->
+    def previous = versionBuilds.empty ? null : versionBuilds.last()
+    versionBuilds << tasks.register("build_${minecraftVersion.replace('.', '_')}", GradleBuild) {
+        group = "build"
+        description = "Builds for Minecraft ${minecraftVersion}"
+        buildName = "realcombat-${minecraftVersion.replace('.', '-')}"
+        tasks = ["build"]
+        startParameter.projectProperties = [mc: minecraftVersion]
+        if (previous != null) {
+            mustRunAfter previous
+        }
+    }
+}
+tasks.register("buildAll") {
+    group = "build"
+    description = "Builds for every supported Minecraft version"
+    dependsOn versionBuilds
 }

@@ -28,6 +28,6 @@ public abstract class ItemInHandLayerMixin {
 		CombatPose pose = ((CombatRenderState) state).realcombat$pose();
 		if (pose == null) return;
 		float roll = Poses.roll(pose);
-		if (roll != 0) poseStack.mulPose(Poses.THIRD_PERSON_BLADE.rotation(arm == HumanoidArm.RIGHT ? roll : -roll));
+		if (roll != 0) poseStack.rotateAround(Poses.THIRD_PERSON_BLADE.rotation(arm == HumanoidArm.RIGHT ? roll : -roll), 0, 0, 0);
 	}
 }

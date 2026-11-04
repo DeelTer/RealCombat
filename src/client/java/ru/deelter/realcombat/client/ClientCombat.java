@@ -309,9 +309,34 @@ public final class ClientCombat {
 		if (bot != null) return pose(bot, partial);
 		Remote remote = REMOTE.get(entity.getId());
 		if (remote == null || !(entity instanceof net.minecraft.world.entity.LivingEntity living) || !Weapons.armed(living)) return null;
-		float ticks = remote.ticks + (clientTicks - remote.at) + partial;
-		// the server says when the phase changes; until then the phase holds its last frame
-		return new CombatPose(remote.phase, remote.dir, Math.min(1f, ticks / remote.length), remote.riposte);
+		// the message came half a ping late: the fighter is that much further on the server, where the blow lands
+		float ticks = remote.ticks + (clientTicks - remote.at) + partial + lead();
+		Phase phase = remote.phase;
+		int length = remote.length;
+		// a windup runs into its release and a release into its recovery by themselves: the next message only says so
+		// a ping later, and the arm should not stop for it
+		double speed = Weapons.speed(living);
+		if (phase == Phase.WINDUP && ticks >= length) {
+			ticks -= length;
+			phase = Phase.RELEASE;
+			length = rules.scaled(rules.getRelease(), speed);
+		}
+		if (phase == Phase.RELEASE && ticks >= length) {
+			ticks -= length;
+			phase = Phase.RECOVERY;
+			length = rules.scaled(rules.getRecovery(), speed);
+		}
+		return new CombatPose(phase, remote.dir, Math.min(1f, ticks / Math.max(1, length)), remote.riposte);
+	}
+
+	/**
+	 * half the own ping, in ticks (at most 4): how far behind the server a fighter's state is when it arrives
+	 */
+	private static float lead() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.getConnection() == null || mc.player == null) return 0;
+		var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+		return info == null ? 0 : Math.min(4f, info.getLatency() / 100f);
 	}
 
 	private static CombatPose pose(Fighter f, float partial) {

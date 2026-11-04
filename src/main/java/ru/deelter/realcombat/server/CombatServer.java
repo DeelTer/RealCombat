@@ -299,7 +299,9 @@ public final class CombatServer {
 		Vec3 eye = player.getEyePosition();
 		ServerLevel level = player.level();
 		AABB area = player.getBoundingBox().inflate(reach + 1);
-		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.connection.latency() / 50f), 0, r.getMaxRewindTicks()) : 0;
+		// the attacker saw his target half a ping ago, and two ticks behind that: Minecraft draws other players that much
+		// behind where they are, smoothing their motion
+		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.connection.latency() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
 		for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, area.inflate(rewind * 0.4), e -> e != player && e.isAlive() && !e.isSpectator())) {
 			if (f.getStruck().contains(target.getId()) || player.isPassengerOfSameVehicle(target)) continue;
 			AABB box = seen(target, rewind);
@@ -397,7 +399,7 @@ public final class CombatServer {
 		ItemStack weapon = player.getMainHandItem();
 		DamageSource source = player.damageSources().playerAttack(player);
 		damage = EnchantmentHelper.modifyDamage(level, weapon, target, source, damage);
-		target.invulnerableTime = 0;
+		ru.deelter.realcombat.version.Entities.clearInvulnerability(target);
 		boolean hurt;
 		dealing = true;
 		try {
@@ -468,7 +470,7 @@ public final class CombatServer {
 	private static void shove(LivingEntity target, Vec3 away, double strength) {
 		target.push(away.x * strength, 0.08, away.z * strength);
 		// a player moves on his own client: tell it
-		target.hurtMarked = true;
+		ru.deelter.realcombat.version.Entities.resendMotion(target);
 	}
 
 	static void effects(LivingEntity attacker, LivingEntity target, Outcome outcome) {

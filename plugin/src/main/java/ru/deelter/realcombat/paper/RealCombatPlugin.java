@@ -334,7 +334,8 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 	private void sweep(Player player, Fighter f, CombatConfig.Rules r) {
 		double reach = attribute(player, Attribute.ENTITY_INTERACTION_RANGE, 3) + (f.getDir() == Dir.STAB ? r.getStabReachBonus() : 0);
 		Location eye = player.getEyeLocation();
-		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.getPing() / 50f), 0, r.getMaxRewindTicks()) : 0;
+		// half a ping ago, and two ticks behind that, as the client draws other players
+		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.getPing() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
 		BoundingBox area = player.getBoundingBox().expand(reach + 1 + rewind * 0.4);
 		for (Entity entity : player.getWorld().getNearbyEntities(area, e -> e != player && e instanceof LivingEntity l && !l.isDead())) {
 			LivingEntity target = (LivingEntity) entity;

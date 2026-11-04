@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
+
 
 /**
  * The keys beside the mouse: swing with the attack button (its direction from how the view moved), parry with the
@@ -12,10 +12,10 @@ import org.lwjgl.glfw.GLFW;
  */
 public final class Keys {
 	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.parse("realcombat:combat"));
-	public static final KeyMapping STAB = register("stab", GLFW.GLFW_KEY_R);
-	public static final KeyMapping OVERHEAD = register("overhead", GLFW.GLFW_KEY_UNKNOWN);
-	public static final KeyMapping FEINT = register("feint", GLFW.GLFW_KEY_Z);
-	public static final KeyMapping KICK = register("kick", GLFW.GLFW_KEY_G);
+	public static final KeyMapping STAB = register("stab", InputConstants.KEY_R);
+	public static final KeyMapping OVERHEAD = register("overhead", InputConstants.UNKNOWN.getValue());
+	public static final KeyMapping FEINT = register("feint", InputConstants.KEY_Z);
+	public static final KeyMapping KICK = register("kick", InputConstants.KEY_G);
 
 	private Keys() {
 	}
@@ -25,6 +25,6 @@ public final class Keys {
 	}
 
 	private static KeyMapping register(String name, int key) {
-		return KeyMappingHelper.registerKeyMapping(new KeyMapping("key.realcombat." + name, InputConstants.Type.KEYSYM, key, CATEGORY));
+		return KeyMappingHelper.registerKeyMapping(new KeyMapping("key.realcombat." + name, key, CATEGORY));
 	}
 }
