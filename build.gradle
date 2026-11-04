@@ -193,3 +193,10 @@ tasks.register("buildAll") {
     description = "Builds for every supported Minecraft version"
     dependsOn versionBuilds
 }
+
+// gradlew build with no -Pmc builds for every version: this one here, the others one after the other
+if (!gradle.startParameter.projectProperties.containsKey('mc')) {
+    tasks.named('build') {
+        dependsOn versionBuilds.findAll { it.name != "build_${project.mc.replace('.', '_')}" }
+    }
+}

@@ -365,8 +365,8 @@ Vivecraft поворачивает VR-игрока (его прицел, HUD, `g
 
 ## Сборка под 26.2 и 26.3
 
-`gradlew build` — под версию из `gradle.properties` (`mc=26.2`), `gradlew build -Pmc=26.3` — под 26.3, `gradlew buildAll`
-— под все версии из `versions/` по очереди (`realcombat-0.1.0+26.2.jar`, `realcombat-0.1.0+26.3.jar`). Каждая версия
+`gradlew build` (и `gradlew clean build`) — под все версии из `versions/` по очереди, `gradlew build -Pmc=26.3` — под одну,
+`gradlew buildAll` — то же, что `build` без `-Pmc` (`realcombat-0.1.0+26.2.jar`, `realcombat-0.1.0+26.3.jar`). Каждая версия
 запускается в своей папке (`run`, `run-26.3`). Отличия версий — в `src/main/java-<версия>` (`Entities`: в 26.3
 `invulnerableTime` закрыт, `hurtMarked` стал `needsSync`) и `src/client/java-<версия>` (меч от первого лица: в 26.3 —
 `FirstPersonHandsAndItemsRenderer`, `PoseStack.rotate` вместо `mulPose`). Общий код пользуется тем, что есть в обеих
