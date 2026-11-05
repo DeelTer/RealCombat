@@ -153,6 +153,11 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 			apply(player);
 			return;
 		}
+		if (message.action() == Protocol.Action.TOGGLE) {
+			if (r.isPlayerToggle()) setEnabled(player, message.dir() == 1);
+			else apply(player);
+			return;
+		}
 		Fighter f = fighters.get(player.getUniqueId());
 		if (f == null || !r.isEnabled() || player.isDead()) return;
 		f.setWeapon(kind(player));
@@ -246,6 +251,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		Player player = event.getPlayer();
 		pending.removeIf(p -> p.attacker() == player || p.target() == player);
 		boxes.remove(player.getUniqueId());
+		fell.remove(player.getUniqueId());
 		if (!fighters.containsKey(player.getUniqueId())) return;
 		Fighter fresh = new Fighter(rules().getMaxStamina());
 		fresh.setForced(true);
@@ -260,6 +266,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		modded.remove(player.getUniqueId());
 		switched.remove(player.getUniqueId());
 		boxes.remove(player.getUniqueId());
+		fell.remove(player.getUniqueId());
 		pending.removeIf(p -> p.attacker() == player || p.target() == player);
 	}
 
@@ -301,10 +308,23 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	// ---------------------------------------------------------------- the fight
 
+	/**
+	 * the tick each player was last seen falling: a blow landing a moment after he touched down still counts as
+	 * struck from the air
+	 */
+	private final Map<UUID, Integer> fell = new HashMap<>();
+
+	boolean fell(Player player) {
+		Integer at = fell.get(player.getUniqueId());
+		return at != null && tick - at <= 5;
+	}
+
 	private void tick() {
 		tick++;
 		CombatConfig.Rules r = rules();
 		for (Player player : getServer().getOnlinePlayers()) {
+			// the fall distance grows on the way down; the client's own velocity is not seen on the server
+			if (player.getFallDistance() > 0.2f && !player.isFlying() && !player.isInWater()) fell.put(player.getUniqueId(), tick);
 			ArrayDeque<BoundingBox> history = boxes.computeIfAbsent(player.getUniqueId(), id -> new ArrayDeque<>());
 			history.addFirst(player.getBoundingBox());
 			if (history.size() > HISTORY) history.removeLast();
@@ -337,6 +357,20 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		// half a ping ago, and two ticks behind that, as the client draws other players
 		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.getPing() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
 		BoundingBox area = player.getBoundingBox().expand(reach + 1 + rewind * 0.4);
+		// a ghast's fireball the blade crosses is sent back the way the player looks
+		for (Entity entity : player.getWorld().getNearbyEntities(area, e -> e instanceof org.bukkit.entity.Fireball && !e.isDead())) {
+			if (f.getStruck().contains(entity.getEntityId())) continue;
+			if (closest(eye, entity.getBoundingBox()).distance(eye.toVector()) > reach + 0.5) continue;
+			Vector c = entity.getBoundingBox().getCenter();
+			double[] a = Arc.angles(eye.getX(), eye.getY(), eye.getZ(), eye.getYaw(), eye.getPitch(), c.getX(), c.getY(), c.getZ());
+			if (!Arc.crosses(f.getDir(), f.previousProgress(), f.progress(), a[0], a[1], r)) continue;
+			f.getStruck().add(entity.getEntityId());
+			org.bukkit.entity.Fireball ball = (org.bukkit.entity.Fireball) entity;
+			Vector look = eye.getDirection();
+			ball.setShooter(player);
+			ball.setVelocity(look.clone().multiply(Math.max(0.5, ball.getVelocity().length())));
+			ball.setAcceleration(look.clone().multiply(0.1));
+		}
 		for (Entity entity : player.getWorld().getNearbyEntities(area, e -> e != player && e instanceof LivingEntity l && !l.isDead())) {
 			LivingEntity target = (LivingEntity) entity;
 			if (target instanceof Player p && p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
@@ -418,6 +452,8 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void deal(Player player, LivingEntity target, Dir dir, float damage) {
 		target.setNoDamageTicks(0);
+		org.bukkit.inventory.ItemStack weapon = player.getInventory().getItemInMainHand();
+		damage += enchantBonus(weapon, target);
 		DamageSource source = DamageSource.builder(DamageType.PLAYER_ATTACK).withCausingEntity(player).withDirectEntity(player).build();
 		double before = target.getHealth() + target.getAbsorptionAmount();
 		dealing = true;
@@ -427,13 +463,29 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 			dealing = false;
 		}
 		if (target.getHealth() + target.getAbsorptionAmount() >= before && !target.isDead()) return;
-		shove(target, away(player, target), dir == Dir.STAB ? 0.35 : 0.25);
+		shove(target, away(player, target), (dir == Dir.STAB ? 0.35 : 0.25) + 0.25 * weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.KNOCKBACK));
+		int fire = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.FIRE_ASPECT);
+		if (fire > 0 && !target.isDead()) target.setFireTicks(Math.max(target.getFireTicks(), 80 * fire));
 		player.damageItemStack(EquipmentSlot.HAND, 1);
 		try {
 			bodies.struck(player, target, dir, swing(player, dir), damage, target.isDead() || target.getHealth() <= 0);
 		} catch (Throwable e) {
 			getLogger().warning("Body hook failed: " + e);
 		}
+	}
+
+	/**
+	 * What the enchantments of the weapon add to a blow, as vanilla counts them: the plugin deals the damage itself.
+	 */
+	private static float enchantBonus(org.bukkit.inventory.ItemStack weapon, LivingEntity target) {
+		float bonus = 0;
+		int sharp = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.SHARPNESS);
+		if (sharp > 0) bonus += 0.5f * sharp + 0.5f;
+		int smite = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.SMITE);
+		if (smite > 0 && org.bukkit.Tag.ENTITY_TYPES_SENSITIVE_TO_SMITE.isTagged(target.getType())) bonus += 2.5f * smite;
+		int bane = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.BANE_OF_ARTHROPODS);
+		if (bane > 0 && org.bukkit.Tag.ENTITY_TYPES_SENSITIVE_TO_BANE_OF_ARTHROPODS.isTagged(target.getType())) bonus += 2.5f * bane;
+		return bonus;
 	}
 
 	private void kick(Player player, CombatConfig.Rules r) {

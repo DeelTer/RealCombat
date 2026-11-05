@@ -113,6 +113,11 @@ public final class ClientCombat {
 		if (!(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK || mc.level == null) return false;
 		BlockState state = mc.level.getBlockState(hit.getBlockPos());
 		Block block = state.getBlock();
+		// an axe strips a log and scrapes copper: that use is the axe's, not a parry
+		if (mc.player != null && mc.player.getMainHandItem().is(net.minecraft.tags.ItemTags.AXES)) {
+			String path = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+			if (state.is(net.minecraft.tags.BlockTags.LOGS) || path.contains("copper") || path.equals("bamboo_block")) return true;
+		}
 		return state.hasBlockEntity() || state.getMenuProvider(mc.level, hit.getBlockPos()) != null || block instanceof DoorBlock
 				|| block instanceof TrapDoorBlock || block instanceof FenceGateBlock || block instanceof ButtonBlock || block instanceof LeverBlock
 				|| block instanceof BellBlock || block instanceof BedBlock;

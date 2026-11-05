@@ -194,6 +194,7 @@ public final class CombatServer {
 			VrBlades.forget(handler.getPlayer().getUUID());
 			PENDING.removeIf(p -> p.attacker() == handler.getPlayer() || p.target() == handler.getPlayer());
 			SWITCHED.remove(handler.getPlayer().getUUID());
+			FELL.remove(handler.getPlayer().getUUID());
 		});
 		ServerTickEvents.END_SERVER_TICK.register(CombatServer::tick);
 		Commands.init();
@@ -231,6 +232,11 @@ public final class CombatServer {
 			apply(player);
 			return;
 		}
+		if (payload.action() == Protocol.Action.TOGGLE) {
+			if (r.isPlayerToggle()) setEnabled(player, payload.dir() == 1);
+			else apply(player);
+			return;
+		}
 		Fighter f = FIGHTERS.get(player.getUUID());
 		if (f == null || !r.isEnabled() || !player.isAlive()) return;
 		f.setWeapon(Weapons.kind(player));
@@ -251,12 +257,27 @@ public final class CombatServer {
 		settle(player, Integer.MAX_VALUE);
 	}
 
+	/**
+	 * the server tick each player was last seen falling: a blow landing a moment after he touched down still counts
+	 * as struck from the air
+	 */
+	private static final Map<UUID, Integer> FELL = new HashMap<>();
+	private static final int FELL_GRACE = 5;
+
+	public static boolean fell(ServerPlayer player) {
+		Integer at = FELL.get(player.getUUID());
+		return at != null && player.level().getServer().getTickCount() - at <= FELL_GRACE;
+	}
+
 	private static void tick(MinecraftServer server) {
 		CombatConfig.Rules r = rules();
 		List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
 		PUPPETS.values().removeIf(puppet -> puppet.isRemoved() && !puppet.isAlive());
 		players.addAll(PUPPETS.values());
 		for (ServerPlayer player : players) {
+			if (!player.onGround() && player.getDeltaMovement().y < -0.08 && !player.isInWater() && !player.getAbilities().flying) {
+				FELL.put(player.getUUID(), server.getTickCount());
+			}
 			ArrayDeque<AABB> boxes = BOXES.computeIfAbsent(player.getUUID(), id -> new ArrayDeque<>());
 			boxes.addFirst(player.getBoundingBox());
 			if (boxes.size() > HISTORY) boxes.removeLast();
@@ -302,6 +323,15 @@ public final class CombatServer {
 		// the attacker saw his target half a ping ago, and two ticks behind that: Minecraft draws other players that much
 		// behind where they are, smoothing their motion
 		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.connection.latency() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
+		// a ghast's fireball the blade crosses is sent back, as a click on it would
+		for (var ball : level.getEntitiesOfClass(net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile.class, area,
+				e -> e.isAlive() && !f.getStruck().contains(e.getId()))) {
+			if (Sweep.closest(eye, ball.getBoundingBox()).distanceTo(eye) > reach + 0.5) continue;
+			double[] angles = Sweep.angles(player, ball.getBoundingBox().getCenter());
+			if (!Sweep.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0], angles[1], r)) continue;
+			f.getStruck().add(ball.getId());
+			ball.hurtServer(level, player.damageSources().playerAttack(player), 1);
+		}
 		for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, area.inflate(rewind * 0.4), e -> e != player && e.isAlive() && !e.isSpectator())) {
 			if (f.getStruck().contains(target.getId()) || player.isPassengerOfSameVehicle(target)) continue;
 			AABB box = seen(target, rewind);
@@ -408,6 +438,8 @@ public final class CombatServer {
 			dealing = false;
 		}
 		if (!hurt) return;
+		// fire aspect, knockback and the like, as a vanilla blow does
+		EnchantmentHelper.doPostAttackEffectsWithItemSource(level, target, source, weapon);
 		Vec3 away = target.position().subtract(player.position()).horizontal().normalize();
 		shove(target, away, dir == Dir.STAB ? 0.35 : 0.25);
 		player.setLastHurtMob(target);

@@ -46,7 +46,11 @@ final class ChopChopBodies implements Bodies {
 		if (spot == null) return;
 		double max = target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) == null ? 20 : target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
 		float share = (float) (target.getHealth() / Math.max(1, max));
-		switch (Dismember.decide(spot.part(), dir, killed, share, dir.horizontal(), compat, RANDOM)) {
+		boolean falling = RealCombatPlugin.getInstance().fell(attacker);
+		switch (Dismember.decide(spot.part(), dir, killed, share, dir.horizontal(), falling, compat, RANDOM)) {
+			case HALVE -> {
+				if (!ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
+			}
 			case HEAD -> ChopChopApi.sever(target, "head", 0, attacker, false);
 			case SEVER -> ChopChopApi.sever(target, spot, attacker, false);
 			case WOUND -> {

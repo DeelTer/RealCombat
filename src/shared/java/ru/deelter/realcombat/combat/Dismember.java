@@ -25,7 +25,23 @@ public final class Dismember {
 		/**
 		 * the head comes off
 		 */
-		HEAD
+		HEAD,
+		/**
+		 * the body is cleaved in two at the waist: a falling overhead blow
+		 */
+		HALVE
+	}
+
+	/**
+	 * @param falling the attacker was falling (off a jump, a ledge) as the blow landed
+	 */
+	public static Cut decide(String part, Dir dir, boolean killed, float healthShare, boolean vrSlash, boolean falling,
+							 CombatConfig.Compat compat, Random random) {
+		if (falling && dir == Dir.OVERHEAD && compat.isCleave()) {
+			if (killed ? random.nextFloat() < compat.getCleaveKillChance()
+					: healthShare < compat.getCleaveShare() && random.nextFloat() < compat.getCleaveChance()) return Cut.HALVE;
+		}
+		return decide(part, dir, killed, healthShare, vrSlash, compat, random);
 	}
 
 	/**
@@ -53,7 +69,9 @@ public final class Dismember {
 		}
 		if (part.equals("head")) return killed && compat.isDecapitate() ? Cut.HEAD : Cut.WOUND;
 		if (killed) return random.nextFloat() < compat.getKillSeverChance() ? Cut.SEVER : Cut.WOUND;
+		// a living fighter loses an arm or a leg, never the head (that kills) nor the body
+		boolean limb = part.contains("arm") || part.contains("leg");
 		boolean nearlyDead = compat.isLowHealthSever() && healthShare < compat.getLowHealthShare();
-		return nearlyDead && random.nextFloat() < compat.getSeverChance() ? Cut.SEVER : Cut.WOUND;
+		return limb && nearlyDead && random.nextFloat() < compat.getSeverChance() ? Cut.SEVER : Cut.WOUND;
 	}
 }

@@ -146,6 +146,21 @@ public final class Hud {
 	 * @param incoming the blow comes at us: the attacker's right is our left
 	 */
 	private static void arrow(GuiGraphicsExtractor graphics, Font font, Dir dir, boolean incoming, int cx, int cy, int radius, int size, int color) {
+		// a touch larger than the pixel grid allows: scaled about the crosshair
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(cx, cy);
+		graphics.pose().scale(ARROW_SCALE);
+		graphics.pose().translate(-cx, -cy);
+		try {
+			arrowAt(graphics, font, dir, incoming, cx, cy, radius, size, color);
+		} finally {
+			graphics.pose().popMatrix();
+		}
+	}
+
+	private static final float ARROW_SCALE = 1.02f;
+
+	private static void arrowAt(GuiGraphicsExtractor graphics, Font font, Dir dir, boolean incoming, int cx, int cy, int radius, int size, int color) {
 		Dir side = !incoming ? dir : dir == Dir.RIGHT ? Dir.LEFT : dir == Dir.LEFT ? Dir.RIGHT : dir;
 		int half = size / 2;
 		switch (side) {

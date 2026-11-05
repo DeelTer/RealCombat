@@ -37,6 +37,11 @@ public final class CombatConfig {
 		 * minigame: the API or {@code /realcombat enable})
 		 */
 		private boolean enabledByDefault = true;
+		/**
+		 * a player may turn the mechanic off for himself ({@code /realcombat off}), to strip logs and chop with an axe;
+		 * off for an arena where everyone must fight by these rules
+		 */
+		private boolean playerToggle = true;
 		private int windup = 8;
 		private int stabWindup = 7;
 		private int riposteWindup = 6;
@@ -76,13 +81,13 @@ public final class CombatConfig {
 		private int parryBreakStun = 24;
 
 		private float maxStamina = 100;
-		private float staminaRegen = 0.9f;
+		private float staminaRegen = 0.6f;
 		/**
 		 * ticks after spending stamina before it comes back
 		 */
-		private int staminaDelay = 8;
+		private int staminaDelay = 14;
 		private float parryStamina = 7;
-		private float shieldStamina = 16;
+		private float shieldStamina = 24;
 		private float feintStamina = 12;
 		private float chamberStamina = 8;
 		private float whiffStamina = 5;
@@ -93,7 +98,7 @@ public final class CombatConfig {
 		 */
 		private float attackStamina = 4;
 		private float tiredStamina = 25;
-		private int tiredWindup = 3;
+		private int tiredWindup = 4;
 		/**
 		 * a shield knocked away by a heavy blow leaves its holder open this long
 		 */
@@ -137,7 +142,7 @@ public final class CombatConfig {
 		/**
 		 * the shield comes up after this many seconds, vanilla takes 0.25
 		 */
-		private float shieldDelay = 0.05f;
+		private float shieldDelay = 0.2f;
 
 		public int scaled(int ticks, double attackSpeed) {
 			double speed = attackSpeed <= 0 ? 1.6 : attackSpeed;
@@ -178,7 +183,7 @@ public final class CombatConfig {
 		/**
 		 * the shield arm comes up over this many ticks instead of snapping
 		 */
-		private float shieldRaiseTicks = 3f;
+		private float shieldRaiseTicks = 5f;
 		private String duelDifficulty = "NORMAL";
 	}
 
@@ -229,10 +234,10 @@ public final class CombatConfig {
 		private float killSeverChance = 0.75f;
 		private boolean decapitate = true;
 		/**
-		 * a blow at a living fighter left with less than lowHealthShare of his health takes the limb too, with
-		 * severChance: harsh in PvP (no sword hand, no fighting), off by default
+		 * a slash at a living fighter left with less than lowHealthShare of his health takes the arm or leg it landed
+		 * on, with severChance: an arm lost is a sword hand lost (ChopChop), a leg slows him
 		 */
-		private boolean lowHealthSever = false;
+		private boolean lowHealthSever = true;
 		/**
 		 * a side slash (right to left, left to right: a mouse blow, or a strong VR one) through the neck or the legs of
 		 * one left with less than sideSeverShare of his health takes them off with this chance (the head kills)
@@ -240,8 +245,17 @@ public final class CombatConfig {
 		private boolean sideSever = true;
 		private float sideSeverShare = 0.5f;
 		private float sideSeverChance = 0.4f;
-		private float lowHealthShare = 0.25f;
-		private float severChance = 0.35f;
+		private float lowHealthShare = 0.4f;
+		private float severChance = 0.3f;
+		/**
+		 * an overhead blow struck while falling (off a jump, a ledge) cleaves the body in two: always when it kills
+		 * (cleaveKillChance), and off a mob or a fighter left with less than cleaveShare of his health with
+		 * cleaveChance
+		 */
+		private boolean cleave = true;
+		private float cleaveKillChance = 0.85f;
+		private float cleaveShare = 0.2f;
+		private float cleaveChance = 0.5f;
 	}
 
 	private static final System.Logger LOG = System.getLogger("RealCombat");
@@ -264,6 +278,7 @@ public final class CombatConfig {
 				if (instance.rules == null) instance.rules = new Rules();
 				if (instance.client == null) instance.client = new Client();
 				if (instance.compat == null) instance.compat = new Compat();
+				migrate(instance);
 			} catch (Exception e) {
 				LOG.log(System.Logger.Level.WARNING, "Can't read " + path + ", using the defaults", e);
 			}
@@ -271,7 +286,33 @@ public final class CombatConfig {
 		save();
 	}
 
+	/**
+	 * the settings as of this version: a file written before keeps the values a player changed, the old defaults
+	 * that were tuned since are brought up to date
+	 */
+	private static final int VERSION = 1;
+	private int version;
+
+	private static void migrate(CombatConfig c) {
+		if (c.version < 1) {
+			Rules r = c.rules;
+			if (r.staminaRegen == 0.9f) r.staminaRegen = 0.6f;
+			if (r.staminaDelay == 8) r.staminaDelay = 14;
+			if (r.tiredWindup == 3) r.tiredWindup = 4;
+			if (r.shieldStamina == 16) r.shieldStamina = 24;
+			if (r.shieldDelay == 0.05f) r.shieldDelay = 0.2f;
+			if (c.client.shieldRaiseTicks == 3f) c.client.shieldRaiseTicks = 5f;
+			if (!c.compat.lowHealthSever && c.compat.lowHealthShare == 0.25f) {
+				c.compat.lowHealthSever = true;
+				c.compat.lowHealthShare = 0.4f;
+				c.compat.severChance = 0.3f;
+			}
+		}
+		c.version = VERSION;
+	}
+
 	public static void save() {
+		instance.version = VERSION;
 		if (path == null) return;
 		try {
 			Files.createDirectories(path().getParent());

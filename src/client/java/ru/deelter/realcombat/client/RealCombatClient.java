@@ -103,17 +103,39 @@ public final class RealCombatClient implements ClientModInitializer {
 						MotionRecorder.start(IntegerArgumentType.getInteger(c, "reps"));
 						return 1;
 					}));
-			dispatcher.register(ClientCommands.literal("realcombat").then(duel).then(pose).then(record));
+			dispatcher.register(ClientCommands.literal("realcombat").then(duel).then(pose).then(record)
+					.then(ClientCommands.literal("on").executes(c -> toggle(true)))
+					.then(ClientCommands.literal("off").executes(c -> toggle(false))));
 		});
 	}
 
 	private static boolean helloSent;
+	/**
+	 * the player turned the mechanic off for himself this game: said again to every server he joins
+	 */
+	private static boolean switchedOff;
+
+	/**
+	 * {@code /realcombat on|off}: the server turns the mechanic on or off for this player (if it lets players do that)
+	 */
+	private static int toggle(boolean on) {
+		switchedOff = !on;
+		var player = net.minecraft.client.Minecraft.getInstance().player;
+		if (!ClientPlayNetworking.canSend(ActionPayload.TYPE)) {
+			if (player != null) player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("realcombat.toggle.noserver"));
+			return 0;
+		}
+		ClientPlayNetworking.send(new ActionPayload(Protocol.Action.TOGGLE, on ? 1 : 0));
+		if (player != null) player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(on ? "realcombat.toggle.on" : "realcombat.toggle.off"));
+		return 1;
+	}
 
 	private static void hello() {
 		// the channels may be named before the game is in the play state (Vivecraft does that): then the join says it
 		if (helloSent || !ClientPlayNetworking.canSend(ActionPayload.TYPE)) return;
 		try {
 			ClientPlayNetworking.send(new ActionPayload(Protocol.Action.HELLO, 0));
+			if (switchedOff) ClientPlayNetworking.send(new ActionPayload(Protocol.Action.TOGGLE, 0));
 			helloSent = true;
 		} catch (IllegalStateException e) {
 			// not in the game yet: the join comes next

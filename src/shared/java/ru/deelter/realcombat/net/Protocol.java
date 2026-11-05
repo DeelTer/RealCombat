@@ -34,7 +34,11 @@ public final class Protocol {
 		ATTACK,
 		FEINT,
 		PARRY,
-		KICK;
+		KICK,
+		/**
+		 * the player turns the mechanic on (dir 1) or off (dir 0) for himself: {@code /realcombat on|off}
+		 */
+		TOGGLE;
 
 		private static final Action[] VALUES = values();
 
