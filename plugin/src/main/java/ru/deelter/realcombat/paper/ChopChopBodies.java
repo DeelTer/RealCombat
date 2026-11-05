@@ -48,6 +48,9 @@ final class ChopChopBodies implements Bodies {
 		float share = (float) (target.getHealth() / Math.max(1, max));
 		boolean falling = RealCombatPlugin.getInstance().fell(attacker);
 		switch (Dismember.decide(spot.part(), dir, killed, share, dir.horizontal(), falling, compat, RANDOM)) {
+			case SPLIT -> {
+				if (!ChopChopApi.split(target, attacker, true) && !ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
+			}
 			case HALVE -> {
 				if (!ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
 			}

@@ -39,20 +39,20 @@ class DismemberTest {
 	}
 
 	@Test
-	void aFallingOverheadCleaves() {
-		int killed = 0, living = 0;
+	void fatalitiesOnlyFinish() {
+		int falling = 0, ground = 0, waist = 0;
 		Random random = new Random(9);
 		for (int i = 0; i < 1000; i++) {
-			if (Dismember.decide("body", Dir.OVERHEAD, true, 0, false, true, compat, random) == Dismember.Cut.HALVE) killed++;
-			if (Dismember.decide("head", Dir.OVERHEAD, false, 0.1f, false, true, compat, random) == Dismember.Cut.HALVE) living++;
-			// on the ground, or a side slash, never
-			assertEquals(false, Dismember.decide("body", Dir.OVERHEAD, true, 0, false, false, compat, random) == Dismember.Cut.HALVE);
-			assertEquals(false, Dismember.decide("body", Dir.RIGHT, true, 0, true, true, compat, random) == Dismember.Cut.HALVE);
-			// healthy, no
-			assertEquals(false, Dismember.decide("body", Dir.OVERHEAD, false, 0.8f, false, true, compat, random) == Dismember.Cut.HALVE);
+			if (Dismember.decide("body", Dir.OVERHEAD, true, 0, false, true, compat, random) == Dismember.Cut.SPLIT) falling++;
+			if (Dismember.decide("body", Dir.OVERHEAD, true, 0, false, false, compat, random) == Dismember.Cut.SPLIT) ground++;
+			if (Dismember.decide("body", Dir.RIGHT, true, 0, true, false, compat, random) == Dismember.Cut.HALVE) waist++;
+			// the living are never cleaved, however low
+			Dismember.Cut living = Dismember.decide("body", Dir.OVERHEAD, false, 0.01f, false, true, compat, random);
+			assertEquals(Dismember.Cut.WOUND, living);
 		}
-		assertEquals(850, killed, 50);
-		assertEquals(500, living, 60);
+		assertEquals(850, falling, 50);
+		assertEquals(200, ground, 50);
+		assertEquals(200, waist, 50);
 	}
 
 	@Test
@@ -66,16 +66,14 @@ class DismemberTest {
 	}
 
 	@Test
-	void aStrongVrSideSlashTakesTheNeckAndTheLegsOfTheNearlyDead() {
-		int heads = 0, legs = 0;
+	void aSideSlashTakesTheLegsOfTheNearlyDeadButTheHeadOnlyWithTheLife() {
+		int legs = 0;
 		Random random = new Random(3);
 		for (int i = 0; i < 1000; i++) {
-			if (Dismember.decide("head", Dir.RIGHT, false, 0.3f, true, compat, random) == Dismember.Cut.HEAD) heads++;
+			assertEquals(Dismember.Cut.WOUND, Dismember.decide("head", Dir.RIGHT, false, 0.1f, true, compat, random));
 			if (Dismember.decide("right_leg", Dir.LEFT, false, 0.3f, true, compat, random) == Dismember.Cut.SEVER) legs++;
 		}
-		assertEquals(400, heads, 50);
 		assertEquals(400, legs, 50);
-		// healthy, it stays a wound
-		assertEquals(Dismember.Cut.WOUND, Dismember.decide("head", Dir.RIGHT, false, 0.9f, true, compat, new Random(1)));
+		assertEquals(Dismember.Cut.WOUND, Dismember.decide("right_leg", Dir.RIGHT, false, 0.9f, true, compat, new Random(1)));
 	}
 }

@@ -53,6 +53,9 @@ public final class ChopChopCompat implements Bodies {
 		// falling as the blade lands, or a moment after touching down
 		boolean falling = ru.deelter.realcombat.server.CombatServer.fell(attacker);
 		switch (Dismember.decide(spot.part(), dir, killed, share, vrSlash, falling, compat, RANDOM)) {
+			case SPLIT -> {
+				if (!ChopChopApi.split(target, attacker, true) && !ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
+			}
 			case HALVE -> {
 				if (!ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
 			}

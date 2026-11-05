@@ -239,23 +239,23 @@ public final class CombatConfig {
 		 */
 		private boolean lowHealthSever = true;
 		/**
-		 * a side slash (right to left, left to right: a mouse blow, or a strong VR one) through the neck or the legs of
-		 * one left with less than sideSeverShare of his health takes them off with this chance (the head kills)
+		 * a side slash (right to left, left to right: a mouse blow, or a strong VR one) through the legs of one
+		 * left with less than sideSeverShare of his health takes a leg off with this chance; the neck only when it kills
 		 */
 		private boolean sideSever = true;
-		private float sideSeverShare = 0.5f;
+		private float sideSeverShare = 0.4f;
 		private float sideSeverChance = 0.4f;
 		private float lowHealthShare = 0.4f;
 		private float severChance = 0.3f;
 		/**
-		 * an overhead blow struck while falling (off a jump, a ledge) cleaves the body in two: always when it kills
-		 * (cleaveKillChance), and off a mob or a fighter left with less than cleaveShare of his health with
-		 * cleaveChance
+		 * fatalities, only off a killing blow: an overhead one cleaves the body top to bottom (splitFallingChance
+		 * struck while falling, off a jump or a ledge; splitChance on the ground), a side one cuts it in two at the
+		 * waist (halveChance)
 		 */
 		private boolean cleave = true;
-		private float cleaveKillChance = 0.85f;
-		private float cleaveShare = 0.2f;
-		private float cleaveChance = 0.5f;
+		private float splitFallingChance = 0.85f;
+		private float splitChance = 0.2f;
+		private float halveChance = 0.2f;
 	}
 
 	private static final System.Logger LOG = System.getLogger("RealCombat");
@@ -290,7 +290,7 @@ public final class CombatConfig {
 	 * the settings as of this version: a file written before keeps the values a player changed, the old defaults
 	 * that were tuned since are brought up to date
 	 */
-	private static final int VERSION = 1;
+	private static final int VERSION = 2;
 	private int version;
 
 	private static void migrate(CombatConfig c) {
@@ -308,6 +308,7 @@ public final class CombatConfig {
 				c.compat.severChance = 0.3f;
 			}
 		}
+		if (c.version < 2 && c.compat.sideSeverShare == 0.5f) c.compat.sideSeverShare = 0.4f;
 		c.version = VERSION;
 	}
 

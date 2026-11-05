@@ -27,9 +27,13 @@ public final class Dismember {
 		 */
 		HEAD,
 		/**
-		 * the body is cleaved in two at the waist: a falling overhead blow
+		 * the body is cut in two at the waist: a killing side slash
 		 */
-		HALVE
+		HALVE,
+		/**
+		 * the body is cleaved top to bottom: a killing overhead blow, mostly off a jump
+		 */
+		SPLIT
 	}
 
 	/**
@@ -37,9 +41,10 @@ public final class Dismember {
 	 */
 	public static Cut decide(String part, Dir dir, boolean killed, float healthShare, boolean vrSlash, boolean falling,
 							 CombatConfig.Compat compat, Random random) {
-		if (falling && dir == Dir.OVERHEAD && compat.isCleave()) {
-			if (killed ? random.nextFloat() < compat.getCleaveKillChance()
-					: healthShare < compat.getCleaveShare() && random.nextFloat() < compat.getCleaveChance()) return Cut.HALVE;
+		// a fatality finishes, it never happens to the living
+		if (killed && compat.isCleave()) {
+			if (dir == Dir.OVERHEAD && random.nextFloat() < (falling ? compat.getSplitFallingChance() : compat.getSplitChance())) return Cut.SPLIT;
+			if (dir.horizontal() && random.nextFloat() < compat.getHalveChance()) return Cut.HALVE;
 		}
 		return decide(part, dir, killed, healthShare, vrSlash, compat, random);
 	}
@@ -62,8 +67,9 @@ public final class Dismember {
 		boolean head = part.equals("head");
 		if (vrSlash && (head || part.contains("leg"))) {
 			if (killed) return head ? Cut.HEAD : random.nextFloat() < Math.max(compat.getKillSeverChance(), 0.95f) ? Cut.SEVER : Cut.WOUND;
-			if (compat.isSideSever() && healthShare < compat.getSideSeverShare() && random.nextFloat() < compat.getSideSeverChance()) {
-				return head ? Cut.HEAD : Cut.SEVER;
+			// the head comes off only with the life: in the fight only limbs go
+			if (!head && compat.isSideSever() && healthShare < compat.getSideSeverShare() && random.nextFloat() < compat.getSideSeverChance()) {
+				return Cut.SEVER;
 			}
 			return Cut.WOUND;
 		}
