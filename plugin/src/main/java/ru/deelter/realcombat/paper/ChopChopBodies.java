@@ -12,7 +12,20 @@ import ru.deelter.realcombat.config.CombatConfig;
 /**
  * ChopChop's Paper API: we tell it where the blade went, as the Fabric side does. Only loaded when ChopChop is there.
  */
-final class ChopChopBodies implements Bodies {
+final class ChopChopBodies implements Bodies, org.bukkit.event.Listener {
+	private static final String[] SHATTER = {"head", "right_arm", "left_arm", "right_leg", "left_leg"};
+
+	/**
+	 * A mace smash that kills flattens the body: everything flies off.
+	 */
+	@org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+	public void onDeath(org.bukkit.event.entity.EntityDeathEvent event) {
+		if (!CombatConfig.getInstance().getCompat().isChopchop() || !CombatConfig.getInstance().getCompat().isMaceShatter()) return;
+		var source = event.getDamageSource();
+		if (source.getDamageType() != org.bukkit.damage.DamageType.MACE_SMASH || !ChopChopApi.hasBody(event.getEntity())) return;
+		for (String part : SHATTER) ChopChopApi.sever(event.getEntity(), part, 0, source.getCausingEntity(), true);
+	}
+
 	private static final java.util.Random RANDOM = new java.util.Random();
 	private ChopChopBodies() {
 	}
@@ -20,7 +33,9 @@ final class ChopChopBodies implements Bodies {
 	static ChopChopBodies create(RealCombatPlugin plugin) {
 		// our blows are wounded here; arrows, mobs and players without the mod stay ChopChop's own
 		ChopChopApi.setAutomaticWounds((target, event) -> !(plugin.dealing() && event instanceof EntityDamageByEntityEvent));
-		return new ChopChopBodies();
+		ChopChopBodies bodies = new ChopChopBodies();
+		plugin.getServer().getPluginManager().registerEvents(bodies, plugin);
+		return bodies;
 	}
 
 	void close() {

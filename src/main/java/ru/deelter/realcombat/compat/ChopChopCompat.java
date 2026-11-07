@@ -24,7 +24,15 @@ public final class ChopChopCompat implements Bodies {
 		CombatServer.bodies = new ChopChopCompat();
 		// our blows are wounded here; everything else (arrows, mobs, vanilla players) stays ChopChop's own
 		ChopChopApi.setAutomaticWounds((target, source) -> !CombatServer.dealing());
+		// a mace smash that kills flattens the body: everything flies off
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((target, source) -> {
+			if (!on() || !CombatConfig.getInstance().getCompat().isMaceShatter()) return;
+			if (!source.is(net.minecraft.world.damagesource.DamageTypes.MACE_SMASH) || !ChopChopApi.hasBody(target)) return;
+			for (String part : SHATTER) ChopChopApi.sever(target, part, 0, source.getEntity(), true);
+		});
 	}
+
+	static final String[] SHATTER = {"head", "right_arm", "left_arm", "right_leg", "left_leg"};
 
 	private static boolean on() {
 		return CombatConfig.getInstance().getCompat().isChopchop();
@@ -52,7 +60,7 @@ public final class ChopChopCompat implements Bodies {
 		float share = target.getMaxHealth() <= 0 ? 0 : target.getHealth() / target.getMaxHealth();
 		// falling as the blade lands, or a moment after touching down
 		boolean falling = ru.deelter.realcombat.server.CombatServer.fell(attacker);
-		switch (Dismember.decide(spot.part(), dir, killed, share, vrSlash, falling, compat, RANDOM)) {
+		switch (Dismember.decide(spot.part(), dir, killed, share, vrSlash, falling, from != null, compat, RANDOM)) {
 			case SPLIT -> {
 				if (!ChopChopApi.split(target, attacker, true) && !ChopChopApi.halve(target, 0.5, attacker, true)) ChopChopApi.sever(target, spot, attacker, false);
 			}

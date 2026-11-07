@@ -336,14 +336,28 @@ public final class CombatServer {
 			if (f.getStruck().contains(target.getId()) || player.isPassengerOfSameVehicle(target)) continue;
 			AABB box = seen(target, rewind);
 			if (Sweep.closest(eye, box).distanceTo(eye) > reach) continue;
-			double[] angles = Sweep.angles(player, box.getCenter());
-			if (!Sweep.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0], angles[1], r)) continue;
+			if (!crossesBox(player, f, box, eye, r)) continue;
 			if (!player.hasLineOfSight(target)) continue;
 			f.getStruck().add(target.getId());
 			land(player, f, target, r);
 			// a stab stops in the first body; a parried blade stops altogether
 			if (f.getDir() == Dir.STAB || f.getPhase() != Phase.RELEASE) break;
 		}
+	}
+
+	/**
+	 * The blade crosses some part of the box: its middle, the height of the attacker's eyes on it, or its point
+	 * nearest to them. Close, looking a little down or up at a body, its middle can be out of the line of a side
+	 * slash while the blade plainly goes through the chest.
+	 */
+	private static boolean crossesBox(ServerPlayer player, Fighter f, AABB box, Vec3 eye, CombatConfig.Rules r) {
+		Vec3 center = box.getCenter();
+		Vec3[] points = {center, new Vec3(center.x, Math.clamp(eye.y, box.minY + Math.min(0.2, box.getYsize() / 2), box.maxY - Math.min(0.2, box.getYsize() / 2)), center.z), Sweep.closest(eye, box)};
+		for (Vec3 point : points) {
+			double[] angles = Sweep.angles(player, point);
+			if (Sweep.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0], angles[1], r)) return true;
+		}
+		return false;
 	}
 
 	/**

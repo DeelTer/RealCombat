@@ -76,4 +76,18 @@ class DismemberTest {
 		assertEquals(400, legs, 50);
 		assertEquals(Dismember.Cut.WOUND, Dismember.decide("right_leg", Dir.RIGHT, false, 0.9f, true, compat, new Random(1)));
 	}
+
+	@Test
+	void aVrBladeTakesLimbsOffTheLivingLessOften() {
+		int desktop = 0, vr = 0;
+		Random random = new Random(11);
+		for (int i = 0; i < 2000; i++) {
+			if (Dismember.decide("right_arm", Dir.OVERHEAD, false, 0.3f, false, false, false, compat, random) == Dismember.Cut.SEVER) desktop++;
+			if (Dismember.decide("right_arm", Dir.OVERHEAD, false, 0.3f, false, false, true, compat, random) == Dismember.Cut.SEVER) vr++;
+		}
+		assertEquals(600, desktop, 70);
+		assertEquals(180, vr, 45);
+		// a killing VR blow is not made rarer
+		assertEquals(Dismember.Cut.HEAD, Dismember.decide("head", Dir.RIGHT, true, 0, false, false, true, compat, new Random(1)));
+	}
 }

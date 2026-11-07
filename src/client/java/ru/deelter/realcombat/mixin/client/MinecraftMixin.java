@@ -35,5 +35,15 @@ public abstract class MinecraftMixin {
 		Minecraft mc = (Minecraft) (Object) this;
 		if (!ClientCombat.handles() || ClientCombat.onUsableBlock() || mc.player == null || Weapons.shield(mc.player.getOffhandItem())) return;
 		ci.cancel();
+		// the press still reaches the server, with the sword hand only (nothing in the other hand is eaten or drawn):
+		// a plugin's menu on a click, an NPC, a sign
+		if (mc.gameMode == null) return;
+		if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit) {
+			mc.gameMode.interact(mc.player, hit.getEntity(), hit, net.minecraft.world.InteractionHand.MAIN_HAND);
+		} else if (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+			mc.gameMode.useItemOn(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+		} else {
+			mc.gameMode.useItem(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND);
+		}
 	}
 }

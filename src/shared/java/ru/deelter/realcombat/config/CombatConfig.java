@@ -253,6 +253,14 @@ public final class CombatConfig {
 		 * waist (halveChance)
 		 */
 		private boolean cleave = true;
+		/**
+		 * a VR blade lands many blows: of the limbs it would take off a living target, only this share come off
+		 */
+		private float vrSeverScale = 0.3f;
+		/**
+		 * a kill with a mace smash (off a fall) tears the body apart: the head and every limb fly
+		 */
+		private boolean maceShatter = true;
 		private float splitFallingChance = 0.85f;
 		private float splitChance = 0.2f;
 		private float halveChance = 0.2f;

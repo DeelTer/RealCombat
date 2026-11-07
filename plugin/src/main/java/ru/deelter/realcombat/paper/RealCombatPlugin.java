@@ -377,14 +377,26 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 			if (f.getStruck().contains(target.getEntityId())) continue;
 			BoundingBox box = seen(target, rewind);
 			if (closest(eye, box).distance(eye.toVector()) > reach) continue;
-			Vector center = box.getCenter();
-			double[] angles = Arc.angles(eye.getX(), eye.getY(), eye.getZ(), eye.getYaw(), eye.getPitch(), center.getX(), center.getY(), center.getZ());
-			if (!Arc.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0], angles[1], r)) continue;
+			if (!crossesBox(eye, f, box, r)) continue;
 			if (!player.hasLineOfSight(target)) continue;
 			f.getStruck().add(target.getEntityId());
 			land(player, f, target, r);
 			if (f.getDir() == Dir.STAB || f.getPhase() != Phase.RELEASE) break;
 		}
+	}
+
+	/**
+	 * The blade crosses some part of the box: its middle, the height of the eyes on it, or its point nearest to them.
+	 */
+	private static boolean crossesBox(Location eye, Fighter f, BoundingBox box, CombatConfig.Rules r) {
+		Vector center = box.getCenter();
+		Vector near = closest(eye, box);
+		Vector[] points = {center, new Vector(center.getX(), Math.clamp(eye.getY(), box.getMinY() + Math.min(0.2, box.getHeight() / 2), box.getMaxY() - Math.min(0.2, box.getHeight() / 2)), center.getZ()), near};
+		for (Vector p : points) {
+			double[] angles = Arc.angles(eye.getX(), eye.getY(), eye.getZ(), eye.getYaw(), eye.getPitch(), p.getX(), p.getY(), p.getZ());
+			if (Arc.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0], angles[1], r)) return true;
+		}
+		return false;
 	}
 
 	private BoundingBox seen(LivingEntity target, int rewind) {

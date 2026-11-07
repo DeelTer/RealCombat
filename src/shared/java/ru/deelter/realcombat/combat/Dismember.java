@@ -50,6 +50,16 @@ public final class Dismember {
 	}
 
 	/**
+	 * @param vr a VR blade: it lands many more blows than a mouse, so a living target loses a limb to one of them only
+	 *           {@code vrSeverScale} as often
+	 */
+	public static Cut decide(String part, Dir dir, boolean killed, float healthShare, boolean vrSlash, boolean falling, boolean vr,
+							 CombatConfig.Compat compat, Random random) {
+		if (vr && !killed && random.nextFloat() >= compat.getVrSeverScale()) return Cut.WOUND;
+		return decide(part, dir, killed, healthShare, vrSlash, falling, compat, random);
+	}
+
+	/**
 	 * @param part        the part hit: "head", "body" or a limb
 	 * @param killed      the blow killed
 	 * @param healthShare the health left after the blow, of the maximum
