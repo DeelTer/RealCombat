@@ -31,7 +31,7 @@ public final class FirstPersonKick {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) return null;
 		CombatPose pose = ClientCombat.poseOf(mc.player, partial);
-		if (pose == null || pose.phase() != Phase.KICK) return null;
+		if (pose == null || pose.phase() != Phase.KICK || pose.bash()) return null;
 		float lift = (float) Math.sin(Math.min(1f, pose.progress() * 1.6f) * Math.PI);
 		if (lift <= 0.02f) return null;
 		if (right == null) {

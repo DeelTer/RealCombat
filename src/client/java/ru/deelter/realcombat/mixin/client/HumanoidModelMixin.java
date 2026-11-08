@@ -49,17 +49,27 @@ public abstract class HumanoidModelMixin {
 		arm.zRot = angles.z() * mirror;
 		arm.z += angles.push();
 		float kick = Poses.kickLeg(pose);
-		if (kick != 0) (left ? model.leftLeg : model.rightLeg).xRot = kick;
+		if (pose.bash()) {
+			// a push with the shield: the other arm thrusts it forward, no leg
+			ModelPart shieldArm = left ? model.rightArm : model.leftArm;
+			shieldArm.xRot = -1.45f + 0.4f * kick / 1.5f;
+			shieldArm.yRot = 0.35f * (left ? 1 : -1);
+			shieldArm.z -= 3 * -kick / 1.5f;
+		} else if (kick != 0) (left ? model.leftLeg : model.rightLeg).xRot = kick;
 	}
 
 	private static void realcombat$smoothShield(HumanoidModel<?> model, HumanoidRenderState state) {
-		float ticks = CombatConfig.getInstance().getClient().getShieldRaiseTicks();
-		if (ticks <= 0) return;
-		if (state.rightArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.rightArm, state.ticksUsingItem(HumanoidArm.RIGHT) / ticks);
-		if (state.leftArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.leftArm, state.ticksUsingItem(HumanoidArm.LEFT) / ticks);
+		// as long as the server takes to let the shield block: the arm is up when the shield holds, not sooner
+		var rules = ru.deelter.realcombat.client.ClientCombat.getRules();
+		float ticks = Math.max(1, rules.getShieldDelay() * 20);
+		// held low (looking down) the shield is lower, for the others to read: a blow from above goes over it
+		boolean low = state.xRot > rules.getShieldLowPitch();
+		if (state.rightArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.rightArm, state.ticksUsingItem(HumanoidArm.RIGHT) / ticks, low);
+		if (state.leftArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.leftArm, state.ticksUsingItem(HumanoidArm.LEFT) / ticks, low);
 	}
 
-	private static void realcombat$raise(ModelPart arm, float share) {
+	private static void realcombat$raise(ModelPart arm, float share, boolean low) {
+		if (low) arm.xRot += 0.55f;
 		if (share >= 1) return;
 		share = Math.max(0, share);
 		share = 1 - (1 - share) * (1 - share);

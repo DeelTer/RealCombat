@@ -148,6 +148,17 @@ public final class CombatConfig {
 		 */
 		private float shieldDelay = 0.2f;
 		/**
+		 * a shield held looking down more than this many degrees is a low guard: it takes blows from below and the
+		 * sides, a blow from above goes over it; held higher it takes blows from above, the sides and a thrust, a
+		 * blow from below goes under it
+		 */
+		private float shieldLowPitch = 20;
+		/**
+		 * the attack button with the shield up pushes with it: a kick that needs no legs, costs the pusher this much
+		 * stamina, and lowers the shield while it lasts
+		 */
+		private float bashStamina = 15;
+		/**
 		 * two weapons: a swing straight out of the recovery of the last is the other hand's, its windup this share of a
 		 * whole one; every blow does dualDamage of a single weapon's, a swing costs dualStamina times as much, and the
 		 * parry is dualParryLoss ticks shorter (one blade holds a guard worse than a blade in both hands)
@@ -196,6 +207,10 @@ public final class CombatConfig {
 		/**
 		 * the shield arm comes up over this many ticks instead of snapping
 		 */
+		/**
+		 * no longer used: the shield comes up as long as the server takes to let it block
+		 */
+		@Deprecated
 		private float shieldRaiseTicks = 5f;
 		/**
 		 * what came of a blow (blocked, kicked, chambered...) written over the hotbar; off, only the icons of a parry
@@ -366,8 +381,16 @@ public final class CombatConfig {
 	 * the rules as one player gets them: {@code enabled} says whether he fights by them right now
 	 */
 	public static String rulesJson(Rules rules, boolean enabled) {
+		return rulesJson(rules, enabled, 0);
+	}
+
+	/**
+	 * @param shieldDelay the shield comes up no sooner than this on the server (a Paper one keeps the game's own time)
+	 */
+	public static String rulesJson(Rules rules, boolean enabled, float shieldDelay) {
 		com.google.gson.JsonObject json = GSON.toJsonTree(rules).getAsJsonObject();
 		json.addProperty("enabled", rules.isEnabled() && enabled);
+		json.addProperty("shieldDelay", Math.max(rules.getShieldDelay(), shieldDelay));
 		return GSON.toJson(json);
 	}
 

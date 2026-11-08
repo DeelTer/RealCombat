@@ -104,4 +104,37 @@ class DualTest {
 		run(idle, r, Phase.PARRY_RECOVERY);
 		assertFalse(Rules.parry(idle, r));
 	}
+
+	@Test
+	void aHighShieldLetsABlowFromBelowThroughALowOneFromAbove() {
+		float level = 0, down = r.getShieldLowPitch() + 10;
+		for (Dir d : new Dir[]{Dir.RIGHT, Dir.LEFT}) {
+			assertTrue(Rules.shieldCovers(d, level, r));
+			assertTrue(Rules.shieldCovers(d, down, r));
+		}
+		assertTrue(Rules.shieldCovers(Dir.OVERHEAD, level, r));
+		assertTrue(Rules.shieldCovers(Dir.STAB, level, r));
+		assertFalse(Rules.shieldCovers(Dir.UNDER, level, r));
+		assertTrue(Rules.shieldCovers(Dir.UNDER, down, r));
+		assertFalse(Rules.shieldCovers(Dir.OVERHEAD, down, r));
+	}
+
+	@Test
+	void aShieldPushCostsStaminaAndLeavesThePusherOpen() {
+		Fighter pusher = fighter(false), attacker = fighter(false);
+		assertTrue(Rules.bash(pusher, r));
+		assertTrue(pusher.isBash());
+		assertEquals(r.getMaxStamina() - r.getBashStamina(), pusher.getStamina(), 0.01);
+		Rules.attack(attacker, Dir.RIGHT, r, 1.6);
+		// his shield is pushed out: a blow at him is not blocked by it
+		assertEquals(Outcome.HIT, Rules.blow(attacker, pusher, true, true, false, 6, r));
+		// a plain kick is no push
+		Fighter kicker = fighter(false);
+		assertTrue(Rules.kick(kicker, r));
+		assertFalse(kicker.isBash());
+		// too tired to push
+		Fighter tired = fighter(false);
+		tired.setStamina(r.getBashStamina() - 1);
+		assertFalse(Rules.bash(tired, r));
+	}
 }

@@ -111,8 +111,31 @@ public final class Rules {
 
 	public static boolean kick(Fighter f, CombatConfig.Rules r) {
 		if (f.getPhase() != Phase.IDLE && !(f.getPhase() == Phase.RECOVERY && f.getTicks() >= f.getLength() / 2)) return false;
+		f.setBash(false);
 		f.enter(Phase.KICK, r.getKickWindup() + r.getKickRecovery());
 		return true;
+	}
+
+	/**
+	 * A push with the raised shield: a kick (it breaks a windup, a parry, a shield) that needs no legs, costs the
+	 * pusher stamina, and leaves him open while it lasts: the shield is out of the way.
+	 */
+	public static boolean bash(Fighter f, CombatConfig.Rules r) {
+		if (f.getStamina() < r.getBashStamina() || !kick(f, r)) return false;
+		f.setBash(true);
+		spend(f, r.getBashStamina(), r);
+		return true;
+	}
+
+	/**
+	 * The raised shield is in the way of a blow from {@code dir}: held high (the look level or up) it covers
+	 * everything but a blow from below, held low (looking down) everything but one from above. The sides are
+	 * always covered, as long as the holder faces the blow.
+	 *
+	 * @param pitch where the holder looks, degrees, positive down
+	 */
+	public static boolean shieldCovers(Dir dir, float pitch, CombatConfig.Rules r) {
+		return pitch > r.getShieldLowPitch() ? dir != Dir.OVERHEAD : dir != Dir.UNDER;
 	}
 
 	/**
@@ -189,7 +212,8 @@ public final class Rules {
 				return Outcome.CHAMBERED;
 			}
 		}
-		if (shield && facing) {
+		// a shield pushed out at someone is not in the way
+		if (shield && facing && (defender == null || !(defender.getPhase() == Phase.KICK && defender.isBash()))) {
 			recoil(attacker, r);
 			// a heavy blow knocks the shield out of the way
 			if (attacker.getWeapon().breaksShield) {

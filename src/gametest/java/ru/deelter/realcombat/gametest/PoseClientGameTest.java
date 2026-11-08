@@ -46,6 +46,7 @@ public class PoseClientGameTest implements FabricClientGameTest {
 		}
 		shots.add(new Shot("parry", new CombatPose(Phase.PARRY, Dir.RIGHT, 1f, false)));
 		shots.add(new Shot("kick", new CombatPose(Phase.KICK, Dir.RIGHT, 0.3f, false)));
+		shots.add(new Shot("shield push", new CombatPose(Phase.KICK, Dir.RIGHT, 0.3f, false, true)));
 		shots.add(new Shot("stun", new CombatPose(Phase.STUN, Dir.RIGHT, 0f, false)));
 
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {

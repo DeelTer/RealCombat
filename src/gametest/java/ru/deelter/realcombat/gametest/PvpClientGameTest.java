@@ -81,6 +81,53 @@ public class PvpClientGameTest implements FabricClientGameTest {
 			});
 			context.waitFor(client -> client.player.getHealth() < parried, 60);
 
+			// a raised shield held high: a blow from below goes under it, one from above does not get through
+			server.waitFor(s -> CombatServer.fighter(duelist).getPhase() == Phase.IDLE, 60);
+			server.computeOnServer(s -> {
+				ServerPlayer p = player(s);
+				p.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+				p.setHealth(p.getMaxHealth());
+				duelist.snapTo(p.getX(), p.getY(), p.getZ() + 2.2, 180, 0);
+				duelist.setYHeadRot(180);
+				p.teleportTo(p.level(), p.getX(), p.getY(), p.getZ(), java.util.Set.of(), 0, 0, true);
+				return null;
+			});
+			context.waitTicks(10);
+			context.runOnClient(client -> {
+				client.player.setXRot(0);
+				// the use button held, as a player raising his shield
+				client.options.keyUse.setDown(true);
+			});
+			server.waitFor(s -> player(s).isBlocking(), 60);
+			float shielded = context.computeOnClient(client -> client.player.getHealth());
+			server.computeOnServer(s -> {
+				RealCombatApi.perform(duelist, Protocol.Action.ATTACK, Dir.OVERHEAD);
+				return null;
+			});
+			context.waitTicks(40);
+			float afterHigh = context.computeOnClient(client -> client.player.getHealth());
+			if (afterHigh < shielded) throw new AssertionError("a blow from above went through a high shield: " + shielded + " -> " + afterHigh);
+			server.waitFor(s -> CombatServer.fighter(duelist).getPhase() == Phase.IDLE, 60);
+			server.computeOnServer(s -> {
+				RealCombatApi.perform(duelist, Protocol.Action.ATTACK, Dir.UNDER);
+				return null;
+			});
+			context.waitFor(client -> client.player.getHealth() < afterHigh, 80);
+			// the attack button behind the raised shield pushes with it (the fake duelist can't be hurt, so only the
+			// push itself is checked: the server takes it as one)
+			server.waitFor(s -> CombatServer.fighter(player(s)).getPhase() == Phase.IDLE, 60);
+			context.runOnClient(client -> client.options.keyAttack.setDown(true));
+			context.waitTicks(2);
+			context.runOnClient(client -> client.options.keyAttack.setDown(false));
+			context.waitTicks(3);
+			boolean pushed = server.computeOnServer(s -> CombatServer.fighter(player(s)).getPhase() == Phase.KICK && CombatServer.fighter(player(s)).isBash());
+			if (!pushed) throw new AssertionError("the attack button behind a raised shield did not push with it");
+			context.runOnClient(client -> client.options.keyUse.setDown(false));
+			server.computeOnServer(s -> {
+				player(s).setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+				return null;
+			});
+
 			// with ChopChop: the sword hand cut off, the duelist fights on with the sword in the other one
 			if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("chopchop")) {
 				server.waitFor(s -> CombatServer.fighter(duelist).getPhase() == Phase.IDLE, 60);

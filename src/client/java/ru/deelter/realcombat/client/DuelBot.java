@@ -289,7 +289,8 @@ public final class DuelBot {
 		Vec3 botEye = bot.getEyePosition();
 		boolean guarding = vr && ru.deelter.realcombat.combat.BladeProxy.meets(botEye.x, botEye.y, botEye.z, bot.getYRot(), bot.getXRot(), fighter, rules,
 				VrHand.segment(), CombatConfig.getInstance().getCompat().getVrBladeRadius());
-		Outcome outcome = Rules.blow(fighter, ClientCombat.handles() || vr ? own : null, Sweep.facing(player, bot, rules), player.isBlocking(), guarding, damage, rules);
+		Outcome outcome = Rules.blow(fighter, ClientCombat.handles() || vr ? own : null, Sweep.facing(player, bot, rules),
+				player.isBlocking() && Rules.shieldCovers(fighter.getDir(), player.getXRot(), rules), guarding, damage, rules);
 		if (vr && outcome != Outcome.HIT) VrClient.buzz(0.8f);
 		feedback(bot, player, outcome);
 		if (outcome != Outcome.HIT) return;

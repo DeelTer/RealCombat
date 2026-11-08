@@ -4,7 +4,8 @@
 	"package": "ru.deelter.realcombat.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"BlocksAttacksMixin"
+		"BlocksAttacksMixin",
+		"LivingEntityBlockingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

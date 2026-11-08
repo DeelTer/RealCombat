@@ -78,7 +78,7 @@ public final class ClientCombat {
 	/**
 	 * What the server said about someone else, run on by the client between messages.
 	 */
-	private record Remote(Phase phase, Dir dir, int ticks, int length, boolean riposte, long at, boolean offhand) {
+	private record Remote(Phase phase, Dir dir, int ticks, int length, boolean riposte, long at, boolean offhand, boolean bash) {
 	}
 
 	public static void reset() {
@@ -232,7 +232,21 @@ public final class ClientCombat {
 	}
 
 	public static void attackPressed() {
-		attack(pickDir());
+		// the attack button behind a raised shield pushes with it
+		if (shieldUp()) bash();
+		else attack(pickDir());
+	}
+
+	/**
+	 * the own shield is raised (or coming up)
+	 */
+	public static boolean shieldUp() {
+		LocalPlayer player = Minecraft.getInstance().player;
+		return player != null && player.isUsingItem() && Weapons.shield(player.getUseItem());
+	}
+
+	private static void bash() {
+		if (Rules.bash(own, rules)) send(Protocol.Action.KICK, 1);
 	}
 
 	public static void attack(Dir dir) {
@@ -252,7 +266,8 @@ public final class ClientCombat {
 	}
 
 	private static void kick() {
-		if (Rules.kick(own, rules)) send(Protocol.Action.KICK, 0);
+		if (shieldUp()) bash();
+		else if (Rules.kick(own, rules)) send(Protocol.Action.KICK, 0);
 	}
 
 	private static void send(Protocol.Action action, int dir) {
@@ -329,6 +344,8 @@ public final class ClientCombat {
 		boolean useDown = mc.options.keyUse.isDown();
 		if (handles && useDown && !useWasDown && !onUsableBlock() && !Weapons.shield(player.getOffhandItem()) && !offhandUse()) parry();
 		attackHeld = mc.options.keyAttack.isDown() ? attackHeld + 1 : 0;
+		// behind a raised shield the game swallows the attack button: its press here is the push
+		if (handles && attackHeld == 1 && shieldUp()) bash();
 		useWasDown = useDown;
 
 		if (!Weapons.armed(player) && own.getPhase() != Phase.IDLE && own.getPhase() != Phase.STUN) own.enter(Phase.IDLE, 1);
@@ -363,6 +380,7 @@ public final class ClientCombat {
 				}
 				if (!same) {
 					own.setOffhand(payload.offhand());
+					own.setBash(payload.bash());
 					own.setPhase(Phase.of(payload.phase()));
 					own.setDir(Dir.of(payload.dir()));
 					own.setTicks(payload.ticks());
@@ -381,7 +399,7 @@ public final class ClientCombat {
 			return;
 		}
 		REMOTE.put(payload.entity(), new Remote(Phase.of(payload.phase()), Dir.of(payload.dir()), payload.ticks(),
-				Math.max(1, payload.length()), payload.riposte(), clientTicks, payload.offhand()));
+				Math.max(1, payload.length()), payload.riposte(), clientTicks, payload.offhand(), payload.bash()));
 	}
 
 	public static long ticks() {
@@ -445,7 +463,7 @@ public final class ClientCombat {
 			phase = Phase.RECOVERY;
 			length = rules.scaled(rules.getRecovery(), speed);
 		}
-		return new CombatPose(phase, remote.dir, Math.min(1f, ticks / Math.max(1, length)), remote.riposte);
+		return new CombatPose(phase, remote.dir, Math.min(1f, ticks / Math.max(1, length)), remote.riposte, remote.bash);
 	}
 
 	/**
@@ -460,6 +478,6 @@ public final class ClientCombat {
 
 	private static CombatPose pose(Fighter f, float partial) {
 		float progress = f.getPhase() == Phase.IDLE ? 0 : Math.min(1f, (f.getTicks() + partial) / f.getLength());
-		return new CombatPose(f.getPhase(), f.getDir(), progress, f.isRiposte());
+		return new CombatPose(f.getPhase(), f.getDir(), progress, f.isRiposte(), f.isBash());
 	}
 }

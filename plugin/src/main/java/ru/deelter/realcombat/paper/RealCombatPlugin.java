@@ -166,7 +166,10 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 			case ATTACK -> armed(player) && bodies.canSwing(player) && Rules.attack(f, Dir.of(message.dir()), r, speed(player));
 			case FEINT -> Rules.feint(f, r);
 			case PARRY -> armed(player) && bodies.canSwing(player) && Rules.parry(f, r);
-			case KICK -> bodies.canKick(player) && Rules.kick(f, r);
+			// a push with the raised shield needs no legs
+			case KICK -> message.dir() == 1
+					? player.getInventory().getItemInOffHand().getType() == org.bukkit.Material.SHIELD && player.isHandRaised() && Rules.bash(f, r)
+					: bodies.canKick(player) && Rules.kick(f, r);
 			default -> true;
 		};
 		if (debug) getLogger().info(player.getName() + " " + message.action() + " " + Dir.of(message.dir()) + (done ? "" : " refused") + " in " + f.getPhase());
@@ -184,7 +187,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 	private void sendRules(Player player, int tries) {
 		if (!player.isOnline()) return;
 		if (player.getListeningPluginChannels().contains(Protocol.RULES)) {
-			player.sendPluginMessage(this, Protocol.RULES, Protocol.rules(CombatConfig.rulesJson(rules(), enabled(player))));
+			player.sendPluginMessage(this, Protocol.RULES, Protocol.rules(CombatConfig.rulesJson(rules(), enabled(player), VANILLA_SHIELD_DELAY)));
 		} else if (tries < 100) {
 			getServer().getScheduler().runTaskLater(this, () -> sendRules(player, tries + 1), 1);
 		} else {
@@ -227,7 +230,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void send(Player player, Fighter f) {
 		byte[] message = Protocol.state(new Protocol.StateMessage(player.getEntityId(), f.getPhase().ordinal(), f.getDir().ordinal(),
-				f.getTicks(), f.getLength(), f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0, f.isOffhand()));
+				f.getTicks(), f.getLength(), f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0, f.isOffhand(), f.isBash()));
 		for (Player watcher : player.getTrackedBy()) {
 			if (modded.contains(watcher.getUniqueId())) watcher.sendPluginMessage(this, Protocol.STATE, message);
 		}
@@ -275,6 +278,21 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 	 * The vanilla click of a fighter with a weapon does nothing (his blade does the hitting), and a melee blow at a
 	 * fighter who parries is parried.
 	 */
+	/**
+	 * the blow being dealt went past a raised shield: the game must not block it
+	 */
+	private boolean pastShield;
+	/**
+	 * Paper keeps the game's own time for a shield to come up: the clients are told it, to draw it honestly
+	 */
+	private static final float VANILLA_SHIELD_DELAY = 0.25f;
+
+	@SuppressWarnings("deprecation")
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onPastShield(EntityDamageEvent event) {
+		if (pastShield && event.isApplicable(EntityDamageEvent.DamageModifier.BLOCKING)) event.setDamage(EntityDamageEvent.DamageModifier.BLOCKING, 0);
+	}
+
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onMelee(EntityDamageByEntityEvent event) {
 		if (dealing || !rules().isEnabled()) return;
@@ -455,14 +473,23 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 	private void resolve(Player player, Fighter f, LivingEntity target, Dir dir, float damage, CombatConfig.Rules r) {
 		if (!harmable(player, target)) return;
 		Fighter defender = target instanceof Player p ? fighters.get(p.getUniqueId()) : null;
-		boolean shield = target instanceof Player p && p.isBlocking();
+		// a raised shield is in the way of a blow by how it is held: high, a blow from below goes under it; low, one
+		// from above over it. Judged now, after the defender's grace: a late change of guard counts, as a late parry
+		boolean shield = target instanceof Player p && p.isBlocking() && Rules.shieldCovers(dir, p.getLocation().getPitch(), r);
 		Dir now = f.getDir();
 		f.setDir(dir);
 		Outcome outcome = Rules.blow(f, defender, facing(target, player), shield, false, damage, r);
 		if (debug) getLogger().info(player.getName() + " " + dir + " at " + target.getType() + ": " + outcome);
 		if (f.getPhase() != Phase.RECOVERY || outcome == Outcome.HIT) f.setDir(now);
 		effects(player, target, outcome);
-		if (outcome == Outcome.HIT) deal(player, target, dir, damage);
+		if (outcome == Outcome.HIT) {
+			pastShield = true;
+			try {
+				deal(player, target, dir, damage);
+			} finally {
+				pastShield = false;
+			}
+		}
 		if (outcome == Outcome.PARRY_BROKEN && shield) breakShield((Player) target);
 		if (defender != null && defender.isDirty()) send((Player) target, defender);
 	}

@@ -76,6 +76,10 @@ public final class Fighter {
 	 * times this windup changed its direction (a morph)
 	 */
 	private int morphs;
+	/**
+	 * the kick now is a push with the shield
+	 */
+	private boolean bash;
 
 	public Fighter(float stamina) {
 		this.stamina = stamina;

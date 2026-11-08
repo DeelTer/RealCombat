@@ -88,6 +88,21 @@ public final class CombatServer {
 	 */
 	private static boolean dealing;
 	/**
+	 * the blow being dealt went past a raised shield (over a low one, under a high one): the game must not block it
+	 */
+	private static boolean pastShield;
+
+	public static boolean pastShield() {
+		return pastShield;
+	}
+
+	/**
+	 * the target's raised shield is in the way of a blow from {@code dir}, by how he holds it now (where he looks)
+	 */
+	public static boolean shieldCovers(LivingEntity target, Dir dir, CombatConfig.Rules r) {
+		return target.isBlocking() && Rules.shieldCovers(dir, target.getXRot(), r);
+	}
+	/**
 	 * ChopChop, when it is there
 	 */
 	public static Bodies bodies = Bodies.NONE;
@@ -246,7 +261,10 @@ public final class CombatServer {
 					&& Rules.attack(f, Dir.of(payload.dir()), r, Weapons.speed(player));
 			case FEINT -> Rules.feint(f, r);
 			case PARRY -> Weapons.armed(player) && bodies.canSwing(player) && Rules.parry(f, r);
-			case KICK -> bodies.canKick(player) && Rules.kick(f, r);
+			// a push with the raised shield needs no legs
+			case KICK -> payload.dir() == 1
+					? Weapons.shield(player.getOffhandItem()) && player.isUsingItem() && Rules.bash(f, r)
+					: bodies.canKick(player) && Rules.kick(f, r);
 			default -> true;
 		};
 		// the client guessed wrong: set it right
@@ -423,13 +441,27 @@ public final class CombatServer {
 		// a waiting blow is judged with the direction it was swung in, even if the attacker swung again since
 		Dir now = f.getDir();
 		f.setDir(dir);
-		Outcome outcome = Rules.blow(f, defender, facing, target.isBlocking(), guarding, damage, r);
+		boolean covered = shieldCovers(target, dir, r);
+		Outcome outcome = Rules.blow(f, defender, facing, covered, guarding, damage, r);
 		if (f.getPhase() != Phase.RECOVERY || outcome == Outcome.HIT) f.setDir(now);
 		effects(player, target, outcome);
 		// a side slash carries its line through the neck and the legs, as a VR one does
-		if (outcome == Outcome.HIT) deal(player, target, dir, damage, null, null, dir.horizontal());
-		if (outcome == Outcome.PARRY_BROKEN && target.isBlocking()) breakShield(target);
+		if (outcome == Outcome.HIT) dealPast(player, target, dir, damage, null, null, dir.horizontal());
+		if (outcome == Outcome.PARRY_BROKEN && covered) breakShield(target);
 		if (defender != null && defender.isDirty() && target instanceof ServerPlayer p) send(p, defender);
+	}
+
+	/**
+	 * Deals a blow that landed by these rules: a shield it went past (over, under, or pushed out of the way) does not
+	 * stop it.
+	 */
+	public static void dealPast(ServerPlayer player, LivingEntity target, Dir dir, float damage, Vec3 from, Vec3 along, boolean vrSlash) {
+		pastShield = true;
+		try {
+			deal(player, target, dir, damage, from, along, vrSlash);
+		} finally {
+			pastShield = false;
+		}
 	}
 
 	public static void deal(ServerPlayer player, LivingEntity target, Dir dir, float damage) {

@@ -195,9 +195,9 @@ final class VrBlades {
 		float damage = (float) (Weapons.damage(player) * f.getWeapon().damage(dir) * r.getDamageMultiplier() * Rules.damageShare(f, r) * Math.clamp(force * 0.7, 0.5, 1.3));
 		// the VR defender's parry is his blade, which has had its say already: only a mouse parry or a shield are left
 		Outcome outcome = Rules.blow(f, defender != null && !defender.isVr() ? defender : null, Sweep.facing(target, player, r),
-				target.isBlocking(), false, damage, r);
+				CombatServer.shieldCovers(target, dir, r), false, damage, r);
 		CombatServer.effects(player, target, outcome);
-		if (outcome == Outcome.HIT) CombatServer.deal(player, target, dir, damage, from, along, slash);
+		if (outcome == Outcome.HIT) CombatServer.dealPast(player, target, dir, damage, from, along, slash);
 		if (defender != null && target instanceof ServerPlayer p) CombatServer.send(p, defender);
 		// a VR blade is not stopped by a recoil: the hand goes on
 		if (f.getPhase() == Phase.RECOVERY) f.enter(Phase.IDLE, 1);
