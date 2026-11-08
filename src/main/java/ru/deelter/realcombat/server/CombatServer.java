@@ -240,6 +240,7 @@ public final class CombatServer {
 		Fighter f = FIGHTERS.get(player.getUUID());
 		if (f == null || !r.isEnabled() || !player.isAlive()) return;
 		f.setWeapon(Weapons.kind(player));
+		f.setDual(Weapons.dual(player));
 		boolean done = switch (payload.action()) {
 			case ATTACK -> Weapons.armed(player) && bodies.canSwing(player)
 					&& Rules.attack(f, Dir.of(payload.dir()), r, Weapons.speed(player));
@@ -290,6 +291,7 @@ public final class CombatServer {
 			if (f == null) continue;
 			f.setVr(CombatConfig.getInstance().getCompat().isVivecraft() && Vivecraft.isVrPlayer(player));
 			f.setWeapon(Weapons.kind(player));
+			f.setDual(Weapons.dual(player));
 			if (!player.isAlive()) {
 				if (f.busy()) f.enter(Phase.IDLE, 1);
 				continue;
@@ -376,7 +378,7 @@ public final class CombatServer {
 
 	private static void land(ServerPlayer player, Fighter f, LivingEntity target, CombatConfig.Rules r) {
 		Fighter defender = target instanceof ServerPlayer p ? FIGHTERS.get(p.getUUID()) : null;
-		float damage = Weapons.damage(player) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier();
+		float damage = Weapons.damage(player, f.isOffhand()) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier() * Rules.damageShare(f, r);
 		if (defender != null && !defender.isVr() && r.isLagCompensation()) {
 			// half the defender's ping and a tick more: how late his parry may arrive and still have been in time
 			int grace = Math.clamp(Math.round(((ServerPlayer) target).connection.latency() / 100f) + 1, 1, r.getMaxParryGrace());
@@ -440,8 +442,10 @@ public final class CombatServer {
 	 */
 	public static void deal(ServerPlayer player, LivingEntity target, Dir dir, float damage, Vec3 from, Vec3 along, boolean vrSlash) {
 		ServerLevel level = player.level();
-		ItemStack weapon = Weapons.weapon(player);
-		EquipmentSlot slot = Weapons.offHanded(player) ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
+		Fighter fighter = FIGHTERS.get(player.getUUID());
+		boolean offSwing = fighter != null && fighter.isOffhand() && Weapons.dual(player);
+		ItemStack weapon = Weapons.weapon(player, offSwing);
+		EquipmentSlot slot = offSwing || Weapons.offHanded(player) ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
 		DamageSource source = player.damageSources().playerAttack(player);
 		damage = EnchantmentHelper.modifyDamage(level, weapon, target, source, damage);
 		ru.deelter.realcombat.version.Entities.clearInvulnerability(target);

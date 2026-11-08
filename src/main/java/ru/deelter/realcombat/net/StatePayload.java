@@ -18,7 +18,7 @@ public record StatePayload(Protocol.StateMessage message) implements CustomPacke
 
 	public static StatePayload of(int entity, Fighter f) {
 		return new StatePayload(new Protocol.StateMessage(entity, f.getPhase().ordinal(), f.getDir().ordinal(), f.getTicks(), f.getLength(),
-				f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0));
+				f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0, f.isOffhand()));
 	}
 
 	public int entity() {
@@ -59,6 +59,10 @@ public record StatePayload(Protocol.StateMessage message) implements CustomPacke
 
 	public boolean ripostes() {
 		return message.ripostes();
+	}
+
+	public boolean offhand() {
+		return message.offhand();
 	}
 
 	@Override

@@ -143,6 +143,15 @@ public final class CombatConfig {
 		 * the shield comes up after this many seconds, vanilla takes 0.25
 		 */
 		private float shieldDelay = 0.2f;
+		/**
+		 * two weapons: a swing straight out of the recovery of the last is the other hand's, its windup this share of a
+		 * whole one; every blow does dualDamage of a single weapon's, a swing costs dualStamina times as much, and the
+		 * parry is dualParryLoss ticks shorter (one blade holds a guard worse than a blade in both hands)
+		 */
+		private float dualChainWindup = 0.75f;
+		private float dualDamage = 0.7f;
+		private float dualStamina = 1.35f;
+		private int dualParryLoss = 1;
 
 		public int scaled(int ticks, double attackSpeed) {
 			double speed = attackSpeed <= 0 ? 1.6 : attackSpeed;

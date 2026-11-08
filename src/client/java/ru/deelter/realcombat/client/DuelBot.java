@@ -235,7 +235,7 @@ public final class DuelBot {
 		CombatConfig.Rules rules = ClientCombat.getRules();
 		Fighter own = ClientCombat.getOwn();
 		own.setDir(dir);
-		float damage = (float) (Weapons.damage(player) * own.getWeapon().damage(dir) * rules.getDamageMultiplier() * Math.clamp(force * 0.7, 0.5, 1.3));
+		float damage = (float) (Weapons.damage(player, own.isOffhand()) * own.getWeapon().damage(dir) * rules.getDamageMultiplier() * Rules.damageShare(own, rules) * Math.clamp(force * 0.7, 0.5, 1.3));
 		Outcome outcome = Rules.blow(own, fighter, Sweep.facing(bot, player, rules), false, false, damage, rules);
 		// a VR blade does not recoil: the hand goes on
 		if (own.getPhase() == Phase.RECOVERY) own.enter(Phase.IDLE, 1);
@@ -316,7 +316,7 @@ public final class DuelBot {
 			if (Sweep.closest(player, bot).distanceTo(player.getEyePosition()) <= reach
 					&& Sweep.crosses(own.getDir(), own.previousProgress(), own.progress(), angles[0], angles[1], rules)) {
 				own.getStruck().add(ID);
-				float damage = Weapons.damage(player) * own.getWeapon().damage(own.getDir()) * rules.getDamageMultiplier();
+				float damage = Weapons.damage(player, own.isOffhand()) * own.getWeapon().damage(own.getDir()) * rules.getDamageMultiplier() * Rules.damageShare(own, rules);
 				Outcome outcome = Rules.blow(own, fighter, Sweep.facing(bot, player, rules), false, false, damage, rules);
 				feedback(player, bot, outcome);
 				if (outcome == Outcome.HIT) hurtBot(player, damage);

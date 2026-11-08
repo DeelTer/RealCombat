@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
@@ -77,7 +78,7 @@ public final class ClientCombat {
 	/**
 	 * What the server said about someone else, run on by the client between messages.
 	 */
-	private record Remote(Phase phase, Dir dir, int ticks, int length, boolean riposte, long at) {
+	private record Remote(Phase phase, Dir dir, int ticks, int length, boolean riposte, long at, boolean offhand) {
 	}
 
 	public static void reset() {
@@ -123,6 +124,47 @@ public final class ClientCombat {
 				|| block instanceof BellBlock || block instanceof BedBlock;
 	}
 
+	private static final double THREAT_RANGE = 6;
+	private static final double MOB_RANGE = 4;
+	private static final double THREAT_COS = Math.cos(Math.toRadians(70));
+
+	/**
+	 * The use button is the other hand's item (a fishing rod, a bow, food) rather than a parry: something usable
+	 * there, and nothing in front that could be parried, no one winding up a blow nor a monster close by.
+	 */
+	public static boolean offhandUse() {
+		Minecraft mc = Minecraft.getInstance();
+		LocalPlayer player = mc.player;
+		if (player == null || mc.level == null) return false;
+		var off = player.getOffhandItem();
+		if (off.isEmpty() || Weapons.isWeapon(off) || Weapons.shield(off)) return false;
+		return !threatened(player);
+	}
+
+	private static boolean threatened(LocalPlayer player) {
+		if (DuelBot.active()) return true;
+		Minecraft mc = Minecraft.getInstance();
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getViewVector(1f);
+		for (var e : REMOTE.entrySet()) {
+			Phase phase = e.getValue().phase;
+			if (phase != Phase.WINDUP && phase != Phase.RELEASE) continue;
+			Entity other = mc.level.getEntity(e.getKey());
+			if (other != null && inFront(eye, look, other, THREAT_RANGE)) return true;
+		}
+		for (Entity mob : mc.level.getEntities(player, player.getBoundingBox().inflate(MOB_RANGE),
+				e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive())) {
+			if (inFront(eye, look, mob, MOB_RANGE)) return true;
+		}
+		return false;
+	}
+
+	private static boolean inFront(Vec3 eye, Vec3 look, Entity other, double range) {
+		Vec3 to = other.getBoundingBox().getCenter().subtract(eye);
+		double distance = to.length();
+		return distance <= range && (distance < 1e-3 || to.normalize().dot(look) >= THREAT_COS);
+	}
+
 	/**
 	 * The crosshair is on an entity that is not alive (a boat, a minecart, an item frame): the click breaks it as usual.
 	 */
@@ -147,6 +189,7 @@ public final class ClientCombat {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null) return;
 		own.setWeapon(Weapons.kind(player));
+		own.setDual(Weapons.dual(player));
 		if (Rules.attack(own, dir, rules, Weapons.speed(player))) send(Protocol.Action.ATTACK, dir.ordinal());
 	}
 
@@ -220,6 +263,7 @@ public final class ClientCombat {
 		}
 
 		own.setWeapon(Weapons.kind(player));
+		own.setDual(Weapons.dual(player));
 		boolean handles = handles() && mc.gui.screen() == null;
 		if (handles && !hinted && CombatConfig.getInstance().getClient().isHints()) {
 			hinted = true;
@@ -233,7 +277,7 @@ public final class ClientCombat {
 		while (Keys.KICK.consumeClick()) if (handles) kick();
 		// a parry is a tap: holding the button does not parry again and again
 		boolean useDown = mc.options.keyUse.isDown();
-		if (handles && useDown && !useWasDown && !onUsableBlock() && !Weapons.shield(player.getOffhandItem())) parry();
+		if (handles && useDown && !useWasDown && !onUsableBlock() && !Weapons.shield(player.getOffhandItem()) && !offhandUse()) parry();
 		attackHeld = mc.options.keyAttack.isDown() ? attackHeld + 1 : 0;
 		useWasDown = useDown;
 
@@ -265,6 +309,7 @@ public final class ClientCombat {
 					own.setLength(Math.min(own.getLength(), rules.scaled(rules.getComboRecovery(), Weapons.speed(player))));
 				}
 				if (!same) {
+					own.setOffhand(payload.offhand());
 					own.setPhase(Phase.of(payload.phase()));
 					own.setDir(Dir.of(payload.dir()));
 					own.setTicks(payload.ticks());
@@ -283,7 +328,7 @@ public final class ClientCombat {
 			return;
 		}
 		REMOTE.put(payload.entity(), new Remote(Phase.of(payload.phase()), Dir.of(payload.dir()), payload.ticks(),
-				Math.max(1, payload.length()), payload.riposte(), clientTicks));
+				Math.max(1, payload.length()), payload.riposte(), clientTicks, payload.offhand()));
 	}
 
 	public static long ticks() {
@@ -296,6 +341,22 @@ public final class ClientCombat {
 
 	public static Iterable<Integer> remoteIds() {
 		return REMOTE.keySet();
+	}
+
+	/**
+	 * The arm an entity swings with now: the other one for a swing of the other hand (two weapons) or when the sword
+	 * hand is gone.
+	 */
+	public static net.minecraft.world.entity.HumanoidArm armOf(net.minecraft.world.entity.LivingEntity entity) {
+		Minecraft mc = Minecraft.getInstance();
+		boolean off;
+		if (entity == mc.player) off = own.isOffhand();
+		else {
+			Fighter bot = DuelBot.fighterOf(entity);
+			Remote remote = REMOTE.get(entity.getId());
+			off = bot != null ? bot.isOffhand() : remote != null && remote.offhand;
+		}
+		return Weapons.arm(entity, off);
 	}
 
 	/**

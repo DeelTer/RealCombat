@@ -56,11 +56,17 @@ public final class Protocol {
 	 * @param forced  the change was not the fighter's own doing: his own client takes it over its prediction
 	 * @param combo   his last blow landed: a short recovery, the next swing may start at once
 	 * @param ripostes a parry of his caught a blow: his next swing is a riposte
+	 * @param offhand  the swing is his other hand's (two weapons, or the sword hand cut off)
 	 */
 	public record StateMessage(int entity, int phase, int dir, int ticks, int length, float stamina, boolean riposte, boolean forced,
-							   boolean combo, boolean ripostes) {
+							   boolean combo, boolean ripostes, boolean offhand) {
 		public StateMessage(int entity, int phase, int dir, int ticks, int length, float stamina, boolean riposte, boolean forced) {
-			this(entity, phase, dir, ticks, length, stamina, riposte, forced, false, false);
+			this(entity, phase, dir, ticks, length, stamina, riposte, forced, false, false, false);
+		}
+
+		public StateMessage(int entity, int phase, int dir, int ticks, int length, float stamina, boolean riposte, boolean forced,
+							boolean combo, boolean ripostes) {
+			this(entity, phase, dir, ticks, length, stamina, riposte, forced, combo, ripostes, false);
 		}
 	}
 
@@ -83,7 +89,7 @@ public final class Protocol {
 			out.writeShort(m.ticks());
 			out.writeShort(m.length());
 			out.writeFloat(m.stamina());
-			out.writeByte((m.riposte() ? 1 : 0) | (m.forced() ? 2 : 0) | (m.combo() ? 4 : 0) | (m.ripostes() ? 8 : 0));
+			out.writeByte((m.riposte() ? 1 : 0) | (m.forced() ? 2 : 0) | (m.combo() ? 4 : 0) | (m.ripostes() ? 8 : 0) | (m.offhand() ? 16 : 0));
 		});
 	}
 
@@ -96,7 +102,8 @@ public final class Protocol {
 			int length = in.readShort();
 			float stamina = in.readFloat();
 			int flags = in.readByte();
-			return new StateMessage(entity, phase, dir, ticks, length, stamina, (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, (flags & 8) != 0);
+			return new StateMessage(entity, phase, dir, ticks, length, stamina, (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, (flags & 8) != 0,
+					(flags & 16) != 0);
 		});
 	}
 

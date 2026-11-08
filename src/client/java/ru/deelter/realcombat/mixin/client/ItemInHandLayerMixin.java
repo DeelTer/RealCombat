@@ -28,7 +28,7 @@ public abstract class ItemInHandLayerMixin {
 		if (arm != (swinging != null ? swinging : state.mainArm)) return;
 		CombatPose pose = ((CombatRenderState) state).realcombat$pose();
 		if (pose == null) return;
-		float roll = Poses.roll(pose);
+		float roll = Poses.roll(pose.forArm(arm));
 		if (roll != 0) poseStack.rotateAround(Poses.THIRD_PERSON_BLADE.rotation(arm == HumanoidArm.RIGHT ? roll : -roll), 0, 0, 0);
 	}
 }

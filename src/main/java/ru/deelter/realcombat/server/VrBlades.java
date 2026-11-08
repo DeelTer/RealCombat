@@ -192,7 +192,7 @@ final class VrBlades {
 		if (f.getPhase() == Phase.STUN || !CombatServer.harmable(player, target)) return Outcome.BLOCKED;
 		f.setDir(dir);
 		Fighter defender = target instanceof ServerPlayer p ? fighters.get(p.getUUID()) : null;
-		float damage = (float) (Weapons.damage(player) * f.getWeapon().damage(dir) * r.getDamageMultiplier() * Math.clamp(force * 0.7, 0.5, 1.3));
+		float damage = (float) (Weapons.damage(player) * f.getWeapon().damage(dir) * r.getDamageMultiplier() * Rules.damageShare(f, r) * Math.clamp(force * 0.7, 0.5, 1.3));
 		// the VR defender's parry is his blade, which has had its say already: only a mouse parry or a shield are left
 		Outcome outcome = Rules.blow(f, defender != null && !defender.isVr() ? defender : null, Sweep.facing(target, player, r),
 				target.isBlocking(), false, damage, r);

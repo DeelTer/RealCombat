@@ -34,6 +34,8 @@ public abstract class MinecraftMixin {
 	private void realcombat$parry(CallbackInfo ci) {
 		Minecraft mc = (Minecraft) (Object) this;
 		if (!ClientCombat.handles() || ClientCombat.onUsableBlock() || mc.player == null || Weapons.shield(mc.player.getOffhandItem())) return;
+		// a fishing rod, a bow or food in the other hand, and nothing to parry in front: the use is that item's
+		if (ClientCombat.offhandUse()) return;
 		ci.cancel();
 		// the press still reaches the server, with the sword hand only (nothing in the other hand is eaten or drawn):
 		// a plugin's menu on a click, an NPC, a sign

@@ -161,6 +161,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		Fighter f = fighters.get(player.getUniqueId());
 		if (f == null || !r.isEnabled() || player.isDead()) return;
 		f.setWeapon(kind(player));
+		f.setDual(dual(player));
 		boolean done = switch (message.action()) {
 			case ATTACK -> armed(player) && bodies.canSwing(player) && Rules.attack(f, Dir.of(message.dir()), r, speed(player));
 			case FEINT -> Rules.feint(f, r);
@@ -226,7 +227,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void send(Player player, Fighter f) {
 		byte[] message = Protocol.state(new Protocol.StateMessage(player.getEntityId(), f.getPhase().ordinal(), f.getDir().ordinal(),
-				f.getTicks(), f.getLength(), f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0));
+				f.getTicks(), f.getLength(), f.getStamina(), f.isRiposte(), f.isForced(), f.isCombo(), f.getRiposteWindow() > 0, f.isOffhand()));
 		for (Player watcher : player.getTrackedBy()) {
 			if (modded.contains(watcher.getUniqueId())) watcher.sendPluginMessage(this, Protocol.STATE, message);
 		}
@@ -340,6 +341,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 				continue;
 			}
 			f.setWeapon(kind(player));
+			f.setDual(dual(player));
 			if (!armed(player) && f.getPhase() != Phase.IDLE && f.getPhase() != Phase.STUN && f.getPhase() != Phase.KICK) f.enter(Phase.IDLE, 1);
 			Rules.tick(f, r, speed(player));
 			if (f.getPhase() == Phase.RELEASE) {
@@ -411,7 +413,9 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void land(Player player, Fighter f, LivingEntity target, CombatConfig.Rules r) {
 		Fighter defender = target instanceof Player p ? fighters.get(p.getUniqueId()) : null;
-		float damage = (float) fighting(player, Attribute.ATTACK_DAMAGE, 1) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier();
+		boolean offSwing = f.isOffhand() && dual(player);
+		float damage = (float) (offSwing ? swapped(player, Attribute.ATTACK_DAMAGE, 1, player.getInventory().getItemInOffHand())
+				: fighting(player, Attribute.ATTACK_DAMAGE, 1)) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier() * Rules.damageShare(f, r);
 		if (defender != null && r.isLagCompensation()) {
 			// half the defender's ping and a tick more: how late his parry may arrive and still have been in time
 			int grace = Math.clamp(Math.round(((Player) target).getPing() / 100f) + 1, 1, r.getMaxParryGrace());
@@ -464,8 +468,9 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void deal(Player player, LivingEntity target, Dir dir, float damage) {
 		target.setNoDamageTicks(0);
-		org.bukkit.inventory.ItemStack weapon = fightingItem(player);
-		boolean off = offHanded(player);
+		Fighter fighter = fighters.get(player.getUniqueId());
+		boolean off = offHanded(player) || fighter != null && fighter.isOffhand() && dual(player);
+		org.bukkit.inventory.ItemStack weapon = off ? player.getInventory().getItemInOffHand() : player.getInventory().getItemInMainHand();
 		damage += enchantBonus(weapon, target);
 		DamageSource source = DamageSource.builder(DamageType.PLAYER_ATTACK).withCausingEntity(player).withDirectEntity(player).build();
 		double before = target.getHealth() + target.getAbsorptionAmount();
@@ -596,7 +601,23 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 	private static double fighting(LivingEntity entity, Attribute attribute, double fallback) {
 		double value = attribute(entity, attribute, fallback);
 		if (!offHanded(entity)) return value;
-		return value - added(entity.getEquipment().getItemInMainHand(), attribute) + added(entity.getEquipment().getItemInOffHand(), attribute);
+		return swapped(entity, attribute, fallback, entity.getEquipment().getItemInOffHand());
+	}
+
+	/**
+	 * the attribute with {@code held}'s modifiers in the place of the main hand item's
+	 */
+	private static double swapped(LivingEntity entity, Attribute attribute, double fallback, ItemStack held) {
+		return attribute(entity, attribute, fallback) - added(entity.getEquipment().getItemInMainHand(), attribute) + added(held, attribute);
+	}
+
+	/**
+	 * a weapon in each hand, both hands there: the hands take turns
+	 */
+	static boolean dual(LivingEntity entity) {
+		if (entity.getEquipment() == null || !weapon(entity.getEquipment().getItemInMainHand()) || !weapon(entity.getEquipment().getItemInOffHand())) return false;
+		Bodies b = instance == null ? Bodies.NONE : instance.bodies;
+		return !b.handless(entity, "left") && !b.handless(entity, "right");
 	}
 
 	@SuppressWarnings("deprecation")

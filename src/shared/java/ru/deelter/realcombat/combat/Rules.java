@@ -32,9 +32,13 @@ public final class Rules {
 			}
 		}
 		boolean riposte = f.getRiposteWindow() > 0;
+		// two weapons: a swing out of the last one's recovery is the other hand's, and quicker; a fresh one starts with
+		// the main hand. Each costs more and does less, so two blades are a faster string, not a stronger one
+		boolean chained = f.isDual() && f.getPhase() == Phase.RECOVERY && !f.isFeinted();
+		f.setOffhand(chained && !f.isOffhand());
 		// a tired fighter swings slower; a swing costs stamina, a heavy weapon's more
 		boolean tired = tired(f, r);
-		spend(f, r.getAttackStamina() * f.getWeapon().swingCost, r);
+		spend(f, r.getAttackStamina() * f.getWeapon().swingCost * (f.isDual() ? r.getDualStamina() : 1), r);
 		f.setDir(dir);
 		f.setRiposte(riposte);
 		f.setRiposteWindow(0);
@@ -42,8 +46,17 @@ public final class Rules {
 		f.setFeinted(false);
 		f.getStruck().clear();
 		int windup = riposte ? r.getRiposteWindup() : dir == Dir.STAB ? r.getStabWindup() : r.getWindup();
-		f.enter(Phase.WINDUP, r.scaled(windup, speed) + (tired ? r.getTiredWindup() : 0));
+		int ticks = r.scaled(windup, speed);
+		if (chained && !riposte) ticks = Math.max(2, Math.round(ticks * r.getDualChainWindup()));
+		f.enter(Phase.WINDUP, ticks + (tired ? r.getTiredWindup() : 0));
 		return true;
+	}
+
+	/**
+	 * the share of a single weapon's damage a blow of this fighter does: less with two weapons
+	 */
+	public static float damageShare(Fighter f, CombatConfig.Rules r) {
+		return f.isDual() ? r.getDualDamage() : 1;
 	}
 
 	/**
@@ -83,7 +96,8 @@ public final class Rules {
 			}
 		}
 		f.setRiposte(false);
-		f.enter(Phase.PARRY, r.getParry());
+		f.setOffhand(false);
+		f.enter(Phase.PARRY, Math.max(2, r.getParry() - (f.isDual() ? r.getDualParryLoss() : 0)));
 		return true;
 	}
 

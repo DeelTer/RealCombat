@@ -21,9 +21,10 @@ public abstract class ItemInHandRendererMixin {
 	@Inject(method = "applyItemArmTransform", at = @At("TAIL"))
 	private void realcombat$swing(PoseStack poseStack, HumanoidArm arm, float inverseArmHeight, CallbackInfo ci) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.player == null || arm != ru.deelter.realcombat.combat.Weapons.arm(mc.player)) return;
+		if (mc.player == null || arm != ru.deelter.realcombat.client.ClientCombat.armOf(mc.player)) return;
 		CombatPose pose = ClientCombat.poseOf(mc.player, mc.getDeltaTracker().getGameTimeDeltaPartialTick(true));
 		if (pose == null) return;
+		pose = pose.forArm(arm);
 		Poses.Hand hand = Poses.hand(pose);
 		float mirror = arm == HumanoidArm.RIGHT ? 1 : -1;
 		poseStack.translate(hand.tx() * mirror, hand.ty(), hand.tz());

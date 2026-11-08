@@ -64,6 +64,14 @@ public final class Fighter {
 	 * what the fighter holds: set each tick from the hand
 	 */
 	private Weapon weapon = Weapon.SWORD;
+	/**
+	 * a weapon in each hand: the hands take turns in a string of swings. Set each tick from the hands
+	 */
+	private boolean dual;
+	/**
+	 * the swing now (or the last one) is the other hand's
+	 */
+	private boolean offhand;
 
 	public Fighter(float stamina) {
 		this.stamina = stamina;

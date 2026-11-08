@@ -38,6 +38,29 @@ public final class Weapons {
 	}
 
 	/**
+	 * a weapon in each hand, both hands there: the hands take turns
+	 */
+	public static boolean dual(LivingEntity entity) {
+		var main = entity.getMainArm();
+		return isWeapon(entity.getMainHandItem()) && isWeapon(entity.getOffhandItem())
+				&& !handless(entity, main) && !handless(entity, main.getOpposite());
+	}
+
+	/**
+	 * the weapon of a swing: the other hand's when that hand swings (two weapons) or is the only one left
+	 */
+	public static ItemStack weapon(LivingEntity entity, boolean offhandSwing) {
+		return offhandSwing && dual(entity) ? entity.getOffhandItem() : weapon(entity);
+	}
+
+	/**
+	 * the arm of a swing: the other one when that hand swings (two weapons) or is the only one left
+	 */
+	public static net.minecraft.world.entity.HumanoidArm arm(LivingEntity entity, boolean offhandSwing) {
+		return offhandSwing && dual(entity) ? entity.getMainArm().getOpposite() : arm(entity);
+	}
+
+	/**
 	 * the weapon the fighter fights with: the one in the main hand, or in the other one when that is gone
 	 */
 	public static ItemStack weapon(LivingEntity entity) {
@@ -78,7 +101,16 @@ public final class Weapons {
 	}
 
 	public static float damage(LivingEntity entity) {
-		return entity.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE) ? (float) fighting(entity, Attributes.ATTACK_DAMAGE) : 1f;
+		return damage(entity, false);
+	}
+
+	/**
+	 * the attack damage of a swing of that hand
+	 */
+	public static float damage(LivingEntity entity, boolean offhandSwing) {
+		if (!entity.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)) return 1f;
+		if (offhandSwing && dual(entity)) return (float) swapped(entity, Attributes.ATTACK_DAMAGE, entity.getOffhandItem());
+		return (float) fighting(entity, Attributes.ATTACK_DAMAGE);
 	}
 
 	/**
@@ -88,10 +120,17 @@ public final class Weapons {
 	private static double fighting(LivingEntity entity, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute) {
 		double value = entity.getAttributeValue(attribute);
 		if (!offHanded(entity)) return value;
+		return swapped(entity, attribute, entity.getOffhandItem());
+	}
+
+	/**
+	 * the attribute with {@code held}'s modifiers in the place of the main hand item's
+	 */
+	private static double swapped(LivingEntity entity, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, ItemStack held) {
 		var none = net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY;
 		var slot = net.minecraft.world.entity.EquipmentSlot.MAINHAND;
 		double main = entity.getMainHandItem().getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, none).compute(attribute, 0, slot);
-		double off = entity.getOffhandItem().getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, none).compute(attribute, 0, slot);
-		return value - main + off;
+		double off = held.getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, none).compute(attribute, 0, slot);
+		return entity.getAttributeValue(attribute) - main + off;
 	}
 }

@@ -27,6 +27,7 @@ public abstract class HumanoidModelMixin {
 		if (pose == null) return;
 		HumanoidArm swinging = ((CombatRenderState) state).realcombat$arm();
 		boolean left = (swinging != null ? swinging : state.mainArm) == HumanoidArm.LEFT;
+		pose = pose.forArm(left ? HumanoidArm.LEFT : HumanoidArm.RIGHT);
 		ModelPart arm = left ? model.leftArm : model.rightArm;
 		float mirror = left ? -1 : 1;
 		// the body turns into the blow and the shoulders go with it, as in the vanilla swing
