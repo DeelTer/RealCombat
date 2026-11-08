@@ -124,6 +124,56 @@ public final class ClientCombat {
 				|| block instanceof BellBlock || block instanceof BedBlock;
 	}
 
+	/**
+	 * the bodies the blade of this swing went into: one cut each
+	 */
+	private static final java.util.Set<Integer> CUT_CORPSES = new java.util.HashSet<>();
+	private static final float[] RAY_SPREAD = {-12, 0, 12, 24, 36, 48, 60, 72};
+
+	/**
+	 * A swing goes through the dead bodies of ChopChop lying in its arc, as through the living: rays along the blade
+	 * between the last tick and this one, cut by ChopChop where they meet the body (a limb comes off, a head, a
+	 * wound), the same as a click right at it.
+	 */
+	private static void cutCorpses(LocalPlayer player, float from, boolean wasReleasing) {
+		boolean releasing = own.getPhase() == Phase.RELEASE;
+		if (!releasing && !wasReleasing) {
+			CUT_CORPSES.clear();
+			return;
+		}
+		double reach = player.entityInteractionRange() + 0.5;
+		java.util.List<Corpses.Body> bodies = Corpses.near(player.getBoundingBox().inflate(reach + 1));
+		if (bodies.isEmpty()) return;
+		Vec3 eye = player.getEyePosition();
+		double arc = rules.getSlashArc(), half = arc / 2;
+		// the release ended this tick: its last stretch still counts
+		float to = releasing ? own.progress() : 1f;
+		// a body lies low: the blade goes on down to the ground, below the arc a standing body is struck in
+		double low = 30;
+		for (Corpses.Body body : bodies) {
+			if (CUT_CORPSES.contains(body.id())) continue;
+			search:
+			for (int step = 0; step <= 2; step++) {
+				float p = from + (to - from) * step / 2f;
+				for (float spread : RAY_SPREAD) {
+					double yaw, pitch;
+					switch (own.getDir()) {
+						case RIGHT -> { yaw = half - arc * p; pitch = spread; }
+						case LEFT -> { yaw = -half + arc * p; pitch = spread; }
+						case OVERHEAD -> { yaw = spread / 4; pitch = -half + (arc + low) * p; }
+						case UNDER -> { yaw = spread / 4; pitch = half - arc * p; }
+						default -> { yaw = spread / 8; pitch = spread / 4; }
+					}
+					Vec3 ray = Vec3.directionFromRotation((float) (player.getXRot() + pitch), (float) (player.getYRot() + yaw));
+					if (Corpses.cut(body.id(), eye, ray, reach)) {
+						CUT_CORPSES.add(body.id());
+						break search;
+					}
+				}
+			}
+		}
+	}
+
 	private static final double THREAT_RANGE = 6;
 	private static final double MOB_RANGE = 4;
 	private static final double THREAT_COS = Math.cos(Math.toRadians(70));
@@ -282,7 +332,10 @@ public final class ClientCombat {
 		useWasDown = useDown;
 
 		if (!Weapons.armed(player) && own.getPhase() != Phase.IDLE && own.getPhase() != Phase.STUN) own.enter(Phase.IDLE, 1);
+		float before = own.progress();
+		Phase phaseBefore = own.getPhase();
 		Rules.tick(own, rules, Weapons.speed(player));
+		if (handles && !VrClient.active()) cutCorpses(player, phaseBefore == Phase.RELEASE ? before : 0, phaseBefore == Phase.RELEASE);
 		if (DuelBot.active()) DuelBot.ownTick(own);
 		// in VR: the way the sword points as drawn, for the server's blade to be the one seen
 		if (serverSpeaks && Weapons.armed(player) && ClientPlayNetworking.canSend(ru.deelter.realcombat.net.BladePayload.TYPE)) {

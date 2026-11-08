@@ -27,6 +27,12 @@ public interface Bodies {
 	}
 
 	/**
+	 * A swing crossed what lies on the ground this tick: the dead bodies in its arc.
+	 */
+	default void sweepCorpses(ServerPlayer attacker, ru.deelter.realcombat.combat.Fighter f, Vec3 eye, double reach, ru.deelter.realcombat.config.CombatConfig.Rules r) {
+	}
+
+	/**
 	 * A blow landed and hurt.
 	 *
 	 * @param swing  the way the blade moved through the world

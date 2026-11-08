@@ -19,6 +19,13 @@ interface Bodies {
 		return false;
 	}
 
+	/**
+	 * A swing crossed what lies on the ground this tick: the dead bodies in its arc.
+	 */
+	default void sweepCorpses(org.bukkit.entity.Player attacker, ru.deelter.realcombat.combat.Fighter f, org.bukkit.Location eye, double reach,
+							  ru.deelter.realcombat.config.CombatConfig.Rules r) {
+	}
+
 	default boolean canSwing(LivingEntity fighter) {
 		return true;
 	}

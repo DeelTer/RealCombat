@@ -325,6 +325,7 @@ public final class CombatServer {
 		// the attacker saw his target half a ping ago, and two ticks behind that: Minecraft draws other players that much
 		// behind where they are, smoothing their motion
 		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.connection.latency() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
+		bodies.sweepCorpses(player, f, eye, reach, r);
 		// a ghast's fireball the blade crosses is sent back, as a click on it would
 		for (var ball : level.getEntitiesOfClass(net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile.class, area,
 				e -> e.isAlive() && !f.getStruck().contains(e.getId()))) {

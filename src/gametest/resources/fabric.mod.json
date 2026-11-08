@@ -9,6 +9,7 @@
 			"ru.deelter.realcombat.gametest.PoseClientGameTest",
 			"ru.deelter.realcombat.gametest.ServerClientGameTest",
 			"ru.deelter.realcombat.gametest.PvpClientGameTest",
+			"ru.deelter.realcombat.gametest.CorpseClientGameTest",
 			"ru.deelter.realcombat.gametest.PaperClientGameTest"
 		]
 	},

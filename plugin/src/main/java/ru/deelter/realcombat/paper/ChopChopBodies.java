@@ -42,6 +42,36 @@ final class ChopChopBodies implements Bodies, org.bukkit.event.Listener {
 		ChopChopApi.setAutomaticWounds(null);
 	}
 
+	private final java.util.Map<java.util.UUID, java.util.Set<Integer>> cleft = new java.util.HashMap<>();
+
+	@Override
+	public void sweepCorpses(Player attacker, ru.deelter.realcombat.combat.Fighter f, org.bukkit.Location eye, double reach,
+							 CombatConfig.Rules r) {
+		CombatConfig.Compat compat = CombatConfig.getInstance().getCompat();
+		if (!compat.isChopchop() || f.getDir() == Dir.STAB || compat.getCorpseCleaveChance() <= 0) return;
+		var done = cleft.computeIfAbsent(attacker.getUniqueId(), id -> new java.util.HashSet<>());
+		if (f.previousProgress() == 0) done.clear();
+		var area = attacker.getBoundingBox().expand(reach + 1);
+		for (var corpse : ChopChopApi.corpses(attacker.getWorld(), area).entrySet()) {
+			if (!done.add(corpse.getKey())) continue;
+			var at = corpse.getValue();
+			var box = new org.bukkit.util.BoundingBox(at.getX() - 0.9, at.getY(), at.getZ() - 0.9, at.getX() + 0.9, at.getY() + 0.4, at.getZ() + 0.9);
+			var near = new Vector(Math.clamp(eye.getX(), box.getMinX(), box.getMaxX()), Math.clamp(eye.getY(), box.getMinY(), box.getMaxY()),
+					Math.clamp(eye.getZ(), box.getMinZ(), box.getMaxZ()));
+			Vector c = box.getCenter();
+			double[] a = ru.deelter.realcombat.combat.Arc.angles(eye.getX(), eye.getY(), eye.getZ(), eye.getYaw(), eye.getPitch(), c.getX(), c.getY(), c.getZ());
+			boolean crosses = near.distance(eye.toVector()) <= reach + 0.5 && ru.deelter.realcombat.combat.Arc.crosses(f.getDir(),
+					f.previousProgress(), f.progress(), a[0], f.getDir() == Dir.OVERHEAD ? a[1] - 30 * f.progress() : a[1], r);
+			if (!crosses) {
+				done.remove(corpse.getKey());
+				continue;
+			}
+			if (RANDOM.nextFloat() >= compat.getCorpseCleaveChance()) continue;
+			ChopChopApi.severCorpse(corpse.getKey(), "body", 0.5, true);
+			for (String leg : new String[]{"right_leg", "left_leg"}) ChopChopApi.severCorpse(corpse.getKey(), leg, 0, true);
+		}
+	}
+
 	@Override
 	public boolean handless(LivingEntity fighter, String side) {
 		return CombatConfig.getInstance().getCompat().isChopchop() && ChopChopApi.isHandless(fighter, side);

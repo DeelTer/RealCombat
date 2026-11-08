@@ -33,6 +33,42 @@ public final class ChopChopCompat implements Bodies {
 		});
 	}
 
+	/**
+	 * the bodies a swing went through, by fighter, so a swing cleaves one only once
+	 */
+	private static final java.util.Map<java.util.UUID, java.util.Set<Integer>> CLEFT = new java.util.HashMap<>();
+
+	@Override
+	public void sweepCorpses(ServerPlayer attacker, ru.deelter.realcombat.combat.Fighter f, Vec3 eye, double reach,
+							 CombatConfig.Rules r) {
+		CombatConfig.Compat compat = CombatConfig.getInstance().getCompat();
+		if (!on() || f.getDir() == Dir.STAB || compat.getCorpseCleaveChance() <= 0) return;
+		var cleft = CLEFT.computeIfAbsent(attacker.getUUID(), id -> new java.util.HashSet<>());
+		// a new swing: forget the last one's
+		if (f.previousProgress() == 0) cleft.clear();
+		var area = attacker.getBoundingBox().inflate(reach + 1);
+		for (var corpse : ChopChopApi.corpses(attacker.level(), area).entrySet()) {
+			if (!cleft.add(corpse.getKey())) continue;
+			Vec3 at = corpse.getValue();
+			// a body lies along the ground: a flat box about where it fell
+			var box = new net.minecraft.world.phys.AABB(at.x - 0.9, at.y, at.z - 0.9, at.x + 0.9, at.y + 0.4, at.z + 0.9);
+			if (ru.deelter.realcombat.combat.Sweep.closest(eye, box).distanceTo(eye) > reach + 0.5) {
+				cleft.remove(corpse.getKey());
+				continue;
+			}
+			double[] angles = ru.deelter.realcombat.combat.Sweep.angles(attacker, box.getCenter());
+			// the blade goes on down to the ground through a body lying low
+			if (!ru.deelter.realcombat.combat.Arc.crosses(f.getDir(), f.previousProgress(), f.progress(), angles[0],
+					f.getDir() == Dir.OVERHEAD ? angles[1] - 30 * f.progress() : angles[1], r)) {
+				cleft.remove(corpse.getKey());
+				continue;
+			}
+			if (RANDOM.nextFloat() >= compat.getCorpseCleaveChance()) continue;
+			ChopChopApi.severCorpse(corpse.getKey(), "body", 0.5, true);
+			for (String leg : new String[]{"right_leg", "left_leg"}) ChopChopApi.severCorpse(corpse.getKey(), leg, 0, true);
+		}
+	}
+
 	static final String[] SHATTER = {"head", "right_arm", "left_arm", "right_leg", "left_leg"};
 
 	private static boolean on() {

@@ -46,12 +46,16 @@ public final class Corpses {
 		}
 	}
 
-	public static void cut(int id, Vec3 from, Vec3 dir, double length) {
-		if (!LOADED || broken) return;
+	/**
+	 * @return the blade met the body
+	 */
+	public static boolean cut(int id, Vec3 from, Vec3 dir, double length) {
+		if (!LOADED || broken) return false;
 		try {
-			Api.cut(id, from, dir, length);
+			return Api.cut(id, from, dir, length);
 		} catch (Throwable e) {
 			broken = true;
+			return false;
 		}
 	}
 
@@ -82,8 +86,8 @@ public final class Corpses {
 			return bodies;
 		}
 
-		static void cut(int id, Vec3 from, Vec3 dir, double length) {
-			ChopChopClientApi.cut(id, from, dir, length);
+		static boolean cut(int id, Vec3 from, Vec3 dir, double length) {
+			return ChopChopClientApi.cut(id, from, dir, length);
 		}
 	}
 }

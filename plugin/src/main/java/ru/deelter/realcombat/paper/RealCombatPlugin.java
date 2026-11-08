@@ -359,6 +359,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		// half a ping ago, and two ticks behind that, as the client draws other players
 		int rewind = r.isLagCompensation() ? Math.clamp(Math.round(player.getPing() / 100f) + 2, 0, r.getMaxRewindTicks()) : 0;
 		BoundingBox area = player.getBoundingBox().expand(reach + 1 + rewind * 0.4);
+		bodies.sweepCorpses(player, f, eye, reach, r);
 		// a ghast's fireball the blade crosses is sent back the way the player looks
 		for (Entity entity : player.getWorld().getNearbyEntities(area, e -> e instanceof org.bukkit.entity.Fireball && !e.isDead())) {
 			if (f.getStruck().contains(entity.getEntityId())) continue;

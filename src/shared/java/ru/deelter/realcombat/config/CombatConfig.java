@@ -275,6 +275,11 @@ public final class CombatConfig {
 		 * a kill with a mace smash (off a fall) tears the body apart: the head and every limb fly
 		 */
 		private boolean maceShatter = true;
+		/**
+		 * a slash through a dead body lying in its arc cuts it in two at the waist with this chance, the legs flying
+		 * (the cut where the blade met it is ChopChop's, as a click)
+		 */
+		private float corpseCleaveChance = 0.25f;
 		private float splitFallingChance = 0.85f;
 		private float splitChance = 0.2f;
 		private float halveChance = 0.2f;
