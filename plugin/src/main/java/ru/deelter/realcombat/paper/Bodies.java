@@ -12,6 +12,13 @@ interface Bodies {
 	Bodies NONE = new Bodies() {
 	};
 
+	/**
+	 * the hand on that side ("left", "right") is cut off
+	 */
+	default boolean handless(LivingEntity fighter, String side) {
+		return false;
+	}
+
 	default boolean canSwing(LivingEntity fighter) {
 		return true;
 	}

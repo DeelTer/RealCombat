@@ -43,9 +43,15 @@ final class ChopChopBodies implements Bodies, org.bukkit.event.Listener {
 	}
 
 	@Override
+	public boolean handless(LivingEntity fighter, String side) {
+		return CombatConfig.getInstance().getCompat().isChopchop() && ChopChopApi.isHandless(fighter, side);
+	}
+
+	@Override
 	public boolean canSwing(LivingEntity fighter) {
 		boolean left = fighter instanceof org.bukkit.entity.HumanEntity human && human.getMainHand() == org.bukkit.inventory.MainHand.LEFT;
-		return !ChopChopApi.isHandless(fighter, left ? "left" : "right");
+		// without the sword hand, a weapon in the other one fights instead
+		return !ChopChopApi.isHandless(fighter, left ? "left" : "right") || RealCombatPlugin.offHanded(fighter);
 	}
 
 	@Override

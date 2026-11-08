@@ -81,6 +81,31 @@ public class PvpClientGameTest implements FabricClientGameTest {
 			});
 			context.waitFor(client -> client.player.getHealth() < parried, 60);
 
+			// with ChopChop: the sword hand cut off, the duelist fights on with the sword in the other one
+			if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("chopchop")) {
+				server.waitFor(s -> CombatServer.fighter(duelist).getPhase() == Phase.IDLE, 60);
+				float before = context.computeOnClient(client -> client.player.getHealth());
+				boolean offHanded = server.computeOnServer(s -> {
+					try {
+						Class.forName("ru.deelter.chopchop.api.ChopChopApi")
+								.getMethod("sever", net.minecraft.world.entity.LivingEntity.class, String.class, double.class, net.minecraft.world.entity.Entity.class, boolean.class)
+								.invoke(null, duelist, "right_arm", 0.0, null, false);
+					} catch (ReflectiveOperationException e) {
+						throw new RuntimeException(e);
+					}
+					duelist.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+					duelist.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.IRON_SWORD));
+					duelist.setHealth(duelist.getMaxHealth());
+					// the last blow shoved the player back: face to face again
+					ServerPlayer p = player(s);
+					p.teleportTo(p.level(), duelist.getX(), duelist.getY(), duelist.getZ() - 2.2, java.util.Set.of(), 0, 0, true);
+					RealCombatApi.perform(duelist, Protocol.Action.ATTACK, Dir.LEFT);
+					return ru.deelter.realcombat.combat.Weapons.offHanded(duelist);
+				});
+				if (!offHanded) throw new AssertionError("the duelist without a sword hand does not fight with the other one");
+				context.waitFor(client -> client.player.getHealth() < before, 60);
+			}
+
 			server.computeOnServer(s -> {
 				RealCombatApi.removeFighter(duelist);
 				return null;

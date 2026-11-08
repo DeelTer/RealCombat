@@ -19,5 +19,6 @@ public abstract class LivingEntityRendererMixin {
 			at = @At("TAIL"))
 	private void realcombat$pose(LivingEntity entity, LivingEntityRenderState state, float partial, CallbackInfo ci) {
 		((CombatRenderState) state).realcombat$setPose(ClientCombat.poseOf(entity, partial));
+		((CombatRenderState) state).realcombat$setArm(ru.deelter.realcombat.combat.Weapons.arm(entity));
 	}
 }

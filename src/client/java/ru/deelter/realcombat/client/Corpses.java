@@ -55,6 +55,22 @@ public final class Corpses {
 		}
 	}
 
+	private static boolean noHands;
+
+	/**
+	 * the hand on that side of an entity is cut off, as this client draws it (false without ChopChop, or with one
+	 * from before it could tell)
+	 */
+	public static boolean handless(net.minecraft.world.entity.LivingEntity entity, String side) {
+		if (!LOADED || noHands) return false;
+		try {
+			return ChopChopClientApi.isHandless(entity, side);
+		} catch (Throwable e) {
+			noHands = true;
+			return false;
+		}
+	}
+
 	private static final class Api {
 		static boolean aimed() {
 			return ChopChopClientApi.corpseUnderCrosshair();

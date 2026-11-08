@@ -25,7 +25,8 @@ public abstract class HumanoidModelMixin {
 		realcombat$smoothShield(model, state);
 		CombatPose pose = ((CombatRenderState) state).realcombat$pose();
 		if (pose == null) return;
-		boolean left = state.mainArm == HumanoidArm.LEFT;
+		HumanoidArm swinging = ((CombatRenderState) state).realcombat$arm();
+		boolean left = (swinging != null ? swinging : state.mainArm) == HumanoidArm.LEFT;
 		ModelPart arm = left ? model.leftArm : model.rightArm;
 		float mirror = left ? -1 : 1;
 		// the body turns into the blow and the shoulders go with it, as in the vanilla swing

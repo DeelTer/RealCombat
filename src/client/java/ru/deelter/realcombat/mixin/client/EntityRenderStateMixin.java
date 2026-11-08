@@ -11,6 +11,19 @@ public abstract class EntityRenderStateMixin implements CombatRenderState {
 	@Unique
 	private CombatPose realcombat$pose;
 
+	@Unique
+	private net.minecraft.world.entity.HumanoidArm realcombat$arm;
+
+	@Override
+	public net.minecraft.world.entity.HumanoidArm realcombat$arm() {
+		return realcombat$arm;
+	}
+
+	@Override
+	public void realcombat$setArm(net.minecraft.world.entity.HumanoidArm arm) {
+		realcombat$arm = arm;
+	}
+
 	@Override
 	public CombatPose realcombat$pose() {
 		return realcombat$pose;

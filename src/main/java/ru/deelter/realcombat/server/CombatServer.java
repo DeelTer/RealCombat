@@ -440,7 +440,8 @@ public final class CombatServer {
 	 */
 	public static void deal(ServerPlayer player, LivingEntity target, Dir dir, float damage, Vec3 from, Vec3 along, boolean vrSlash) {
 		ServerLevel level = player.level();
-		ItemStack weapon = player.getMainHandItem();
+		ItemStack weapon = Weapons.weapon(player);
+		EquipmentSlot slot = Weapons.offHanded(player) ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
 		DamageSource source = player.damageSources().playerAttack(player);
 		damage = EnchantmentHelper.modifyDamage(level, weapon, target, source, damage);
 		ru.deelter.realcombat.version.Entities.clearInvulnerability(target);
@@ -457,7 +458,7 @@ public final class CombatServer {
 		Vec3 away = target.position().subtract(player.position()).horizontal().normalize();
 		shove(target, away, dir == Dir.STAB ? 0.35 : 0.25);
 		player.setLastHurtMob(target);
-		weapon.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
+		weapon.hurtAndBreak(1, player, slot);
 		try {
 			bodies.struck(player, target, dir, along != null ? along : Sweep.swing(player, dir), damage, !target.isAlive(), from, along, vrSlash);
 		} catch (Throwable e) {

@@ -32,6 +32,7 @@ public final class RealCombatClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		Keys.init();
+		ru.deelter.realcombat.combat.Weapons.clientHandless = Corpses::handless;
 		ru.deelter.realcombat.combat.Sweep.clientView = VrClient::view;
 		ClientPlayNetworking.registerGlobalReceiver(StatePayload.TYPE, (payload, context) -> ClientCombat.receive(payload));
 		ClientPlayNetworking.registerGlobalReceiver(RulesPayload.TYPE, (payload, context) -> ClientCombat.serverRules(CombatConfig.rulesFromJson(payload.json())));

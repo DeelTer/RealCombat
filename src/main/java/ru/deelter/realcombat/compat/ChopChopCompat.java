@@ -22,6 +22,7 @@ public final class ChopChopCompat implements Bodies {
 
 	public static void init() {
 		CombatServer.bodies = new ChopChopCompat();
+		ru.deelter.realcombat.combat.Weapons.serverHandless = (entity, side) -> on() && ChopChopApi.isHandless(entity, side);
 		// our blows are wounded here; everything else (arrows, mobs, vanilla players) stays ChopChop's own
 		ChopChopApi.setAutomaticWounds((target, source) -> !CombatServer.dealing());
 		// a mace smash that kills flattens the body: everything flies off
@@ -41,7 +42,9 @@ public final class ChopChopCompat implements Bodies {
 	@Override
 	public boolean canSwing(LivingEntity fighter) {
 		// the hand that holds the sword
-		return !on() || !ChopChopApi.isHandless(fighter, fighter.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? "left" : "right");
+		// without the sword hand, a weapon in the other one fights instead
+		return !on() || !ChopChopApi.isHandless(fighter, fighter.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? "left" : "right")
+				|| ru.deelter.realcombat.combat.Weapons.offHanded(fighter);
 	}
 
 	@Override

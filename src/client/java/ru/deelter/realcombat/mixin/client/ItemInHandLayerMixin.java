@@ -24,7 +24,8 @@ public abstract class ItemInHandLayerMixin {
 			target = "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V"))
 	private void realcombat$edge(ArmedEntityRenderState state, ItemStackRenderState item, ItemStack stack, HumanoidArm arm,
 								 PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, CallbackInfo ci) {
-		if (arm != state.mainArm) return;
+		HumanoidArm swinging = ((CombatRenderState) state).realcombat$arm();
+		if (arm != (swinging != null ? swinging : state.mainArm)) return;
 		CombatPose pose = ((CombatRenderState) state).realcombat$pose();
 		if (pose == null) return;
 		float roll = Poses.roll(pose);

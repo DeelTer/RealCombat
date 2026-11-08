@@ -22,7 +22,7 @@ dependencies {
     compileOnly "io.papermc.paper:paper-api:${rootProject.paper_api_version}"
     compileOnly "org.projectlombok:lombok:${rootProject.lombok_version}"
     // optional: wounds and limbs where the blade landed
-    compileOnly files(rootProject.file('../ChopChop/build/libs/chopchop-paper-0.3.0.jar'))
+    compileOnly files(rootProject.file('../ChopChop/build/libs/chopchop-paper-0.4.0.jar'))
     annotationProcessor "org.projectlombok:lombok:${rootProject.lombok_version}"
 }
 

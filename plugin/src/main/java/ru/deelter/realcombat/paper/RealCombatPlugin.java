@@ -411,7 +411,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void land(Player player, Fighter f, LivingEntity target, CombatConfig.Rules r) {
 		Fighter defender = target instanceof Player p ? fighters.get(p.getUniqueId()) : null;
-		float damage = (float) attribute(player, Attribute.ATTACK_DAMAGE, 1) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier();
+		float damage = (float) fighting(player, Attribute.ATTACK_DAMAGE, 1) * f.getWeapon().damage(f.getDir()) * r.getDamageMultiplier();
 		if (defender != null && r.isLagCompensation()) {
 			// half the defender's ping and a tick more: how late his parry may arrive and still have been in time
 			int grace = Math.clamp(Math.round(((Player) target).getPing() / 100f) + 1, 1, r.getMaxParryGrace());
@@ -464,7 +464,8 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	private void deal(Player player, LivingEntity target, Dir dir, float damage) {
 		target.setNoDamageTicks(0);
-		org.bukkit.inventory.ItemStack weapon = player.getInventory().getItemInMainHand();
+		org.bukkit.inventory.ItemStack weapon = fightingItem(player);
+		boolean off = offHanded(player);
 		damage += enchantBonus(weapon, target);
 		DamageSource source = DamageSource.builder(DamageType.PLAYER_ATTACK).withCausingEntity(player).withDirectEntity(player).build();
 		double before = target.getHealth() + target.getAbsorptionAmount();
@@ -478,7 +479,7 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 		shove(target, away(player, target), (dir == Dir.STAB ? 0.35 : 0.25) + 0.25 * weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.KNOCKBACK));
 		int fire = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.FIRE_ASPECT);
 		if (fire > 0 && !target.isDead()) target.setFireTicks(Math.max(target.getFireTicks(), 80 * fire));
-		player.damageItemStack(EquipmentSlot.HAND, 1);
+		player.damageItemStack(off ? EquipmentSlot.OFF_HAND : EquipmentSlot.HAND, 1);
 		try {
 			bodies.struck(player, target, dir, swing(player, dir), damage, target.isDead() || target.getHealth() <= 0);
 		} catch (Throwable e) {
@@ -553,18 +554,62 @@ public final class RealCombatPlugin extends JavaPlugin implements Listener, Plug
 
 	// ---------------------------------------------------------------- helpers
 
+	private static boolean weapon(ItemStack stack) {
+		return stack != null && (Tag.ITEMS_SWORDS.isTagged(stack.getType()) || Tag.ITEMS_AXES.isTagged(stack.getType()));
+	}
+
+	/**
+	 * The sword hand is cut off and the other one holds a weapon: the fighter fights with that one, mirrored.
+	 */
+	static boolean offHanded(LivingEntity entity) {
+		if (entity.getEquipment() == null || !weapon(entity.getEquipment().getItemInOffHand())) return false;
+		boolean left = entity instanceof org.bukkit.entity.HumanEntity human && human.getMainHand() == org.bukkit.inventory.MainHand.LEFT;
+		Bodies b = instance == null ? Bodies.NONE : instance.bodies;
+		return b.handless(entity, left ? "left" : "right") && !b.handless(entity, left ? "right" : "left");
+	}
+
+	/**
+	 * the weapon the fighter fights with: the main hand's, or the other hand's when the main one is gone
+	 */
+	static ItemStack fightingItem(LivingEntity entity) {
+		if (entity.getEquipment() == null) return null;
+		return offHanded(entity) ? entity.getEquipment().getItemInOffHand() : entity.getEquipment().getItemInMainHand();
+	}
+
 	static boolean armed(LivingEntity entity) {
-		ItemStack hand = entity.getEquipment() == null ? null : entity.getEquipment().getItemInMainHand();
-		return hand != null && (Tag.ITEMS_SWORDS.isTagged(hand.getType()) || Tag.ITEMS_AXES.isTagged(hand.getType()));
+		return entity.getEquipment() != null && (weapon(entity.getEquipment().getItemInMainHand()) || offHanded(entity));
 	}
 
 	static Weapon kind(LivingEntity entity) {
-		ItemStack hand = entity.getEquipment() == null ? null : entity.getEquipment().getItemInMainHand();
+		ItemStack hand = fightingItem(entity);
 		return hand != null && Tag.ITEMS_AXES.isTagged(hand.getType()) ? Weapon.AXE : Weapon.SWORD;
 	}
 
 	private static double speed(Player player) {
-		return attribute(player, Attribute.ATTACK_SPEED, 1.6);
+		return fighting(player, Attribute.ATTACK_SPEED, 1.6);
+	}
+
+	/**
+	 * An attribute as the fighting hand makes it: the game counts only the main hand's item, so with the weapon in
+	 * the other hand its modifiers take the place of the main hand's.
+	 */
+	private static double fighting(LivingEntity entity, Attribute attribute, double fallback) {
+		double value = attribute(entity, attribute, fallback);
+		if (!offHanded(entity)) return value;
+		return value - added(entity.getEquipment().getItemInMainHand(), attribute) + added(entity.getEquipment().getItemInOffHand(), attribute);
+	}
+
+	@SuppressWarnings("deprecation")
+	private static double added(ItemStack stack, Attribute attribute) {
+		if (stack == null || stack.getType().isAir()) return 0;
+		java.util.Collection<org.bukkit.attribute.AttributeModifier> modifiers = stack.hasItemMeta() && stack.getItemMeta().hasAttributeModifiers()
+				? stack.getItemMeta().getAttributeModifiers(attribute)
+				: stack.getType().getDefaultAttributeModifiers(org.bukkit.inventory.EquipmentSlot.HAND).get(attribute);
+		double sum = 0;
+		if (modifiers != null) for (var m : modifiers) {
+			if (m.getOperation() == org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER) sum += m.getAmount();
+		}
+		return sum;
 	}
 
 	private static double attribute(LivingEntity entity, Attribute attribute, double fallback) {
