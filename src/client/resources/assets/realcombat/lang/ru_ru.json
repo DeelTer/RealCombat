@@ -88,5 +88,6 @@
   "realcombat.config.lowHealthSever": "Отрубать конечности и почти мёртвым",
   "realcombat.toggle.on": "RealCombat включён: направленные удары и парирование",
   "realcombat.toggle.off": "RealCombat выключен: ванильный бой, топор снова тешет и рубит. /realcombat on — вернуть",
-  "realcombat.toggle.noserver": "На этом сервере нет RealCombat"
+  "realcombat.toggle.noserver": "На этом сервере нет RealCombat",
+  "realcombat.config.outcomeText": "Текст боя над хотбаром"
 }

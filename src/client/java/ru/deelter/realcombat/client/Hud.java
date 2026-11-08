@@ -57,7 +57,9 @@ public final class Hud {
 			case "realcombat.outcome.parry_broken" -> show(PARRY_BROKEN, 0xFFFF7070);
 			case "realcombat.outcome.parry_broken.by" -> show(PARRY_BROKEN, 0xFFFFFFFF);
 			default -> {
-				return false;
+				// the rest (blocked, kicked, a chamber...) say nothing over the hotbar in a fight unless asked to:
+				// the sounds and the arrows tell it, words there only confuse
+				return key.startsWith("realcombat.outcome.") && !CombatConfig.getInstance().getClient().isOutcomeText();
 			}
 		}
 		return true;

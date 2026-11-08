@@ -52,6 +52,8 @@ public final class ClothScreen {
 				.setDefaultValue(clientDefaults.isHints()).setSaveConsumer(client::setHints).build());
 		controls.addEntry(entries.startBooleanToggle(text("staminaBar"), client.isStaminaBar())
 				.setDefaultValue(clientDefaults.isStaminaBar()).setSaveConsumer(client::setStaminaBar).build());
+		controls.addEntry(entries.startBooleanToggle(text("outcomeText"), client.isOutcomeText())
+				.setDefaultValue(clientDefaults.isOutcomeText()).setSaveConsumer(client::setOutcomeText).build());
 		controls.addEntry(entries.startFloatField(text("shieldRaiseTicks"), client.getShieldRaiseTicks())
 				.setDefaultValue(clientDefaults.getShieldRaiseTicks()).setMin(0).setMax(10).setSaveConsumer(client::setShieldRaiseTicks).build());
 		controls.addEntry(entries.startStringDropdownMenu(text("duelDifficulty"), client.getDuelDifficulty())

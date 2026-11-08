@@ -88,5 +88,6 @@
   "realcombat.config.lowHealthSever": "Limbs off the nearly dead too",
   "realcombat.toggle.on": "RealCombat is on: directional swings and parries",
   "realcombat.toggle.off": "RealCombat is off: vanilla combat, the axe strips and chops as usual. /realcombat on brings it back",
-  "realcombat.toggle.noserver": "This server has no RealCombat"
+  "realcombat.toggle.noserver": "This server has no RealCombat",
+  "realcombat.config.outcomeText": "Combat text over the hotbar"
 }

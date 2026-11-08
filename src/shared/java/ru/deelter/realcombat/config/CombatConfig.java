@@ -193,6 +193,11 @@ public final class CombatConfig {
 		 * the shield arm comes up over this many ticks instead of snapping
 		 */
 		private float shieldRaiseTicks = 5f;
+		/**
+		 * what came of a blow (blocked, kicked, chambered...) written over the hotbar; off, only the icons of a parry
+		 * and a broken guard show
+		 */
+		private boolean outcomeText = false;
 		private String duelDifficulty = "NORMAL";
 	}
 
