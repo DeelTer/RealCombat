@@ -15,6 +15,11 @@ import ru.deelter.realcombat.combat.Phase;
  */
 public final class FirstPersonKick {
 	private static ModelPart right, left;
+	/**
+	 * where the leg sits and how it turns (the hip, then the swing up, the lean and the turn in), public for tuning by
+	 * eye with the pose gametest ({@code -PkickTune})
+	 */
+	public static float KX = 0.32f, KY = -0.3f, KZ = 0.03f, KXROT = -1.37f, KZROT = -0.35f, KYROT = -0.27f;
 
 	private FirstPersonKick() {
 	}
@@ -42,11 +47,12 @@ public final class FirstPersonKick {
 		leg.z = 0;
 		// the hip a little below and behind the eyes; the leg swings up and forward into the bottom of the view
 		float side = leftLeg ? -1 : 1;
-		poseStack.translate(0.24f * side, -0.25f - 0.25f * (1 - lift), 0.29f);
+		poseStack.translate(KX * side, KY - 0.25f * (1 - lift), KZ);
 		// the model's down is the view's down, its front the view's front
 		poseStack.scale(-1, -1, 1);
-		leg.xRot = -1.45f * lift;
-		leg.zRot = 0.12f * side * lift;
+		leg.xRot = KXROT * lift;
+		leg.zRot = KZROT * side * lift;
+		leg.yRot = KYROT * side * lift;
 		return leg;
 	}
 

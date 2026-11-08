@@ -93,6 +93,27 @@ public class PoseClientGameTest implements FabricClientGameTest {
 					context.takeScreenshot("roll-" + name);
 				}
 			}
+			// the kicking leg in first person, for tuning by eye
+			String tune = System.getProperty("realcombat.kickTune");
+			if (tune != null) {
+				CombatPose kick = new CombatPose(Phase.KICK, Dir.RIGHT, 0.3f, false);
+				int n = 0;
+				for (String set : tune.split(";")) {
+					String[] v = set.split(",");
+					int shot = n++;
+					context.runOnClient(client -> {
+						ru.deelter.realcombat.client.FirstPersonKick.KX = Float.parseFloat(v[0]);
+						ru.deelter.realcombat.client.FirstPersonKick.KY = Float.parseFloat(v[1]);
+						ru.deelter.realcombat.client.FirstPersonKick.KZ = Float.parseFloat(v[2]);
+						ru.deelter.realcombat.client.FirstPersonKick.KXROT = Float.parseFloat(v[3]);
+						ru.deelter.realcombat.client.FirstPersonKick.KZROT = Float.parseFloat(v[4]);
+						if (v.length > 5) ru.deelter.realcombat.client.FirstPersonKick.KYROT = Float.parseFloat(v[5]);
+						ClientCombat.setOwnFrozen(kick);
+					});
+					look(context, world, spots[1], spots[0]);
+					context.takeScreenshot("kick-tune-" + shot);
+				}
+			}
 			Path dir = context.computeOnClient(client -> client.gameDirectory.toPath().resolve("screenshots"));
 			sheet(front, shots, dir.resolve("poses-front.png"));
 			sheet(side, shots, dir.resolve("poses-side.png"));
