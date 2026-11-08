@@ -51,9 +51,13 @@ public class CorpseClientGameTest implements FabricClientGameTest {
 			var compat = ru.deelter.realcombat.config.CombatConfig.getInstance().getCompat();
 			float chance = compat.getCorpseCleaveChance();
 			compat.setCorpseCleaveChance(0);
-			context.runOnClient(client -> ClientCombat.attack(Dir.OVERHEAD));
-			context.waitTicks(30);
-			int after = context.computeOnClient(client -> cuts(id));
+			// ChopChop wounds a body with a chance: a few blows, as a player would
+			int after = before;
+			for (int i = 0; i < 4 && after <= before; i++) {
+				context.runOnClient(client -> ClientCombat.attack(Dir.OVERHEAD));
+				context.waitTicks(30);
+				after = context.computeOnClient(client -> cuts(id));
+			}
 			System.out.println("[corpse] cuts " + before + " -> " + after);
 			if (after <= before) throw new AssertionError("the swing went over the body and did not cut it: " + before + " -> " + after);
 
@@ -67,6 +71,53 @@ public class CorpseClientGameTest implements FabricClientGameTest {
 				compat.setCorpseCleaveChance(chance);
 			}
 			int cleft = context.computeOnClient(client -> cuts(id));
+			// a mace smash that kills tears the body apart: every piece that flies has its skin
+			int maced = world.getServer().computeOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				Vec3 at = player.position();
+				Zombie z = EntityTypes.ZOMBIE.create(player.level(), EntitySpawnReason.COMMAND);
+				z.setNoAi(true);
+				z.setPos(at.x + 2, at.y, at.z + 1.6);
+				player.level().addFreshEntity(z);
+				return z.getId();
+			});
+			context.waitTicks(10);
+			world.getServer().runOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				var z = (Zombie) player.level().getEntity(maced);
+				var source = new net.minecraft.world.damagesource.DamageSource(player.level().registryAccess()
+						.lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getOrThrow(net.minecraft.world.damagesource.DamageTypes.MACE_SMASH), player);
+				z.hurtServer(player.level(), source, 1000);
+			});
+			context.waitTicks(40);
+			world.getServer().runCommand("execute as @a at @s run tp @s ~2 ~ ~-0.6 0 55");
+			context.waitTicks(5);
+			context.takeScreenshot("mace-shatter");
+			context.runOnClient(client -> {
+				try {
+					Class<?> debris = Class.forName("ru.deelter.chopchop.client.render.Debris");
+					var f = debris.getDeclaredField("CHUNKS");
+					f.setAccessible(true);
+					Class<?> chunk = Class.forName("ru.deelter.chopchop.client.render.Debris$Chunk");
+					var part = chunk.getDeclaredField("part");
+					var cut = chunk.getDeclaredField("cut");
+					var mask = chunk.getDeclaredField("mask");
+					part.setAccessible(true);
+					cut.setAccessible(true);
+					mask.setAccessible(true);
+					for (Object c : (java.util.List<?>) f.get(null)) {
+						Object p = part.get(c);
+						int gx = (int) p.getClass().getMethod("gx").invoke(p), gy = (int) p.getClass().getMethod("gy").invoke(p), gz = (int) p.getClass().getMethod("gz").invoke(p);
+						Object m = mask.get(c);
+						var gone = Class.forName("ru.deelter.chopchop.client.render.VoxelMask").getMethod("gone", int.class, int.class, int.class);
+						int kept = 0;
+						for (int x = 0; x < gx; x++) for (int y = 0; y < gy; y++) for (int zz = 0; zz < gz; zz++) if (!(boolean) gone.invoke(m, x, y, zz)) kept++;
+						System.out.println("[mace] piece " + p.getClass().getMethod("getName").invoke(p) + " cut=" + cut.get(c) + " kept=" + kept);
+					}
+				} catch (ReflectiveOperationException e) {
+					throw new RuntimeException(e);
+				}
+			});
 			System.out.println("[corpse] cleft " + after + " -> " + cleft);
 			if (cleft < after + 1000) throw new AssertionError("a cleaving blow did not cut the body in two: " + after + " -> " + cleft);
 		}

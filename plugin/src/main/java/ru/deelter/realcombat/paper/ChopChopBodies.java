@@ -16,9 +16,10 @@ final class ChopChopBodies implements Bodies, org.bukkit.event.Listener {
 	private static final String[] SHATTER = {"head", "right_arm", "left_arm", "right_leg", "left_leg"};
 
 	/**
-	 * A mace smash that kills flattens the body: everything flies off.
+	 * A mace smash that kills flattens the body: everything flies off. Before ChopChop's own handling of the death
+	 * (MONITOR), which keeps the body as it is then: cut after it, the parts would fly and stay on the body too.
 	 */
-	@org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+	@org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
 	public void onDeath(org.bukkit.event.entity.EntityDeathEvent event) {
 		if (!CombatConfig.getInstance().getCompat().isChopchop() || !CombatConfig.getInstance().getCompat().isMaceShatter()) return;
 		var source = event.getDamageSource();

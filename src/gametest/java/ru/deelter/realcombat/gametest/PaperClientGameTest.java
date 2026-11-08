@@ -81,6 +81,67 @@ public class PaperClientGameTest implements FabricClientGameTest {
 		context.waitFor(client -> !ClientCombat.getRules().isEnabled() && !ClientCombat.handles(), 100);
 		run(consoleFile, "realcombatadmin enable @a");
 		context.waitFor(client -> ClientCombat.getRules().isEnabled() && ClientCombat.handles(), 100);
+		// a kill with a mace smash tears the body apart: every piece that flies keeps its skin
+		run(consoleFile, "summon husk 1.5 -60 2.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,Tags:[\"mace\"]}");
+		context.waitTicks(40);
+		run(consoleFile, "item replace entity @a weapon.mainhand with mace", "damage @e[tag=mace,limit=1] 1000 minecraft:mace_smash by @p");
+		context.waitTicks(60);
+		run(consoleFile, "tp @a 1.5 -60 0.8 0 60");
+		context.waitTicks(30);
+		context.takeScreenshot("realcombat-paper-mace");
+		net.minecraft.world.phys.AABB lying = context.computeOnClient(client -> {
+			var all = ru.deelter.chopchop.client.api.ChopChopClientApi.corpses(client.player.getBoundingBox().inflate(6));
+			return all.isEmpty() ? null : all.getLast().box();
+		});
+		if (lying != null) {
+			var c = lying.getCenter();
+			System.out.println("[mace] body box " + lying);
+			run(consoleFile, String.format(java.util.Locale.ROOT, "tp @a %.2f %.2f %.2f -45 40", c.x - 1.4, lying.minY, c.z - 1.4));
+			context.waitTicks(30);
+			context.takeScreenshot("realcombat-paper-mace-close");
+			run(consoleFile, String.format(java.util.Locale.ROOT, "tp @a %.2f %.2f %.2f 135 40", c.x + 1.4, lying.minY, c.z + 1.4));
+			context.waitTicks(30);
+			context.takeScreenshot("realcombat-paper-mace-close2");
+		}
+		context.runOnClient(client -> {
+			try {
+				Class<?> debris = Class.forName("ru.deelter.chopchop.client.render.Debris");
+				var f = debris.getDeclaredField("CHUNKS");
+				f.setAccessible(true);
+				Class<?> chunk = Class.forName("ru.deelter.chopchop.client.render.Debris$Chunk");
+				var part = chunk.getDeclaredField("part");
+				var cut = chunk.getDeclaredField("cut");
+				var mask = chunk.getDeclaredField("mask");
+				part.setAccessible(true);
+				cut.setAccessible(true);
+				mask.setAccessible(true);
+				var gone = Class.forName("ru.deelter.chopchop.client.render.VoxelMask").getMethod("gone", int.class, int.class, int.class);
+				for (Object c : (java.util.List<?>) f.get(null)) {
+					Object p = part.get(c);
+					int gx = (int) p.getClass().getMethod("gx").invoke(p), gy = (int) p.getClass().getMethod("gy").invoke(p), gz = (int) p.getClass().getMethod("gz").invoke(p);
+					int kept = 0;
+					for (int x = 0; x < gx; x++) for (int y = 0; y < gy; y++) for (int z = 0; z < gz; z++) if (!(boolean) gone.invoke(mask.get(c), x, y, z)) kept++;
+					System.out.println("[mace] piece " + p.getClass().getMethod("getName").invoke(p) + " cut=" + cut.get(c) + " kept=" + kept);
+				}
+				// and the body on the ground keeps none of them
+				var wounds = Class.forName("ru.deelter.chopchop.client.ClientWounds").getMethod("get", int.class);
+				for (var body : ru.deelter.chopchop.client.api.ChopChopClientApi.corpses(client.player.getBoundingBox().inflate(6))) {
+					Object state = wounds.invoke(null, body.id());
+					if (state == null) continue;
+					StringBuilder kept = new StringBuilder();
+					int count = (int) state.getClass().getMethod("partCount").invoke(state);
+					for (int i = 0; i < count; i++) {
+						Object ps = state.getClass().getMethod("part", int.class).invoke(state, i);
+						Object def = ps.getClass().getMethod("getPart").invoke(ps);
+						String name = (String) def.getClass().getMethod("getName").invoke(def);
+						if (!(boolean) ps.getClass().getMethod("severed").invoke(ps)) kept.append(name).append(' ');
+					}
+					System.out.println("[mace] body " + body.id() + " keeps: " + kept);
+				}
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
 		run(consoleFile, "kill @e[tag=rc]");
 		context.runOnClient(client -> client.disconnect(new TitleScreen(), false));
 		context.waitTicks(20);
