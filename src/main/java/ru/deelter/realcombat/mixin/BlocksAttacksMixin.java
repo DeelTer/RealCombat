@@ -15,7 +15,7 @@ import ru.deelter.realcombat.config.CombatConfig;
 public abstract class BlocksAttacksMixin {
 	@Inject(method = "blockDelayTicks", at = @At("RETURN"), cancellable = true)
 	private void realcombat$fasterShield(CallbackInfoReturnable<Integer> cir) {
-		int ours = Math.round(CombatConfig.getInstance().getRules().getShieldDelay() * 20);
-		if (ours < cir.getReturnValue()) cir.setReturnValue(ours);
+		// the setting both ways: the clients draw the shield coming up for exactly this long
+		cir.setReturnValue(Math.round(CombatConfig.getInstance().getRules().getShieldDelay() * 20));
 	}
 }

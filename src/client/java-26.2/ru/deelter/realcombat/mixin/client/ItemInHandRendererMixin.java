@@ -64,6 +64,8 @@ public abstract class ItemInHandRendererMixin {
 			float share = Math.min(1, (player.getTicksUsingItem() + partial) / ticks);
 			float down = (1 - share) * (1 - share);
 			poseStack.translate(0, -0.45f * down, 0.1f * down);
+			// looking down the shield is held low: a blow from above goes over it. Shown here too, for the holder
+			if (player.getXRot() > ClientCombat.getRules().getShieldLowPitch()) poseStack.translate(0, -0.18f, 0);
 		}
 		CombatPose pose = ClientCombat.poseOf(player, partial);
 		if (pose != null && pose.bash()) {
