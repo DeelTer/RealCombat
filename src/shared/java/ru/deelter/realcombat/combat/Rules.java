@@ -22,7 +22,9 @@ public final class Rules {
 				if (!f.isCombo() && f.getTicks() < f.getLength() * 0.6f) return false;
 			}
 			case WINDUP -> {
-				if (f.isRiposte() || dir == f.getDir() || f.progress() > r.getMorphWindow()) return false;
+				// one change of mind per swing: two sides at most, not a flick through three
+				if (f.isRiposte() || dir == f.getDir() || f.progress() > r.getMorphWindow() || f.getMorphs() >= r.getMaxMorphs()) return false;
+				f.setMorphs(f.getMorphs() + 1);
 				f.setDir(dir);
 				f.setDirty(true);
 				return true;
@@ -44,6 +46,7 @@ public final class Rules {
 		f.setRiposteWindow(0);
 		f.setCombo(false);
 		f.setFeinted(false);
+		f.setMorphs(0);
 		f.getStruck().clear();
 		int windup = riposte ? r.getRiposteWindup() : dir == Dir.STAB ? r.getStabWindup() : r.getWindup();
 		int ticks = r.scaled(windup, speed);
@@ -86,6 +89,11 @@ public final class Rules {
 	public static boolean parry(Fighter f, CombatConfig.Rules r) {
 		switch (f.getPhase()) {
 			case IDLE, RECOVERY -> {
+			}
+			// a parry that just caught a blow comes up again at once: a string of blows (two blades) is met blow by
+			// blow, as a riposte may follow at once
+			case PARRY_RECOVERY -> {
+				if (f.getRiposteWindow() <= 0) return false;
 			}
 			case WINDUP -> {
 				if (f.isRiposte() || f.getStamina() < r.getFeintStamina()) return false;

@@ -75,4 +75,33 @@ class DualTest {
 			run(attacker, r, Phase.RECOVERY);
 		}
 	}
+
+	@Test
+	void aWindupChangesItsSideOnceOnly() {
+		Fighter f = fighter(false);
+		assertTrue(Rules.attack(f, Dir.RIGHT, r, 1.6));
+		assertTrue(Rules.attack(f, Dir.LEFT, r, 1.6), "the first change of mind");
+		assertFalse(Rules.attack(f, Dir.OVERHEAD, r, 1.6), "a third side");
+		assertEquals(Dir.LEFT, f.getDir());
+		// a new swing may change again
+		run(f, r, Phase.IDLE);
+		assertTrue(Rules.attack(f, Dir.RIGHT, r, 1.6));
+		assertTrue(Rules.attack(f, Dir.UNDER, r, 1.6));
+	}
+
+	@Test
+	void aParryThatCaughtABlowComesUpAgainAtOnce() {
+		Fighter attacker = fighter(true), defender = fighter(false);
+		Rules.attack(attacker, Dir.RIGHT, r, 1.6);
+		while (attacker.getPhase() == Phase.WINDUP && attacker.getLength() - attacker.getTicks() > 2) Rules.tick(attacker, r, 1.6);
+		assertTrue(Rules.parry(defender, r));
+		assertNotEquals(Outcome.HIT, Rules.blow(attacker, defender, true, false, false, 6, r));
+		run(defender, r, Phase.PARRY_RECOVERY);
+		assertTrue(Rules.parry(defender, r), "the next blow of the string is met");
+		// a parry that caught nothing waits out its recovery
+		Fighter idle = fighter(false);
+		Rules.parry(idle, r);
+		run(idle, r, Phase.PARRY_RECOVERY);
+		assertFalse(Rules.parry(idle, r));
+	}
 }

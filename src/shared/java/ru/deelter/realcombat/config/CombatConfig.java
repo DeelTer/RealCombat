@@ -56,6 +56,10 @@ public final class CombatConfig {
 		 */
 		private float morphWindow = 0.5f;
 		/**
+		 * times a windup may change its direction: one, so two sides at most
+		 */
+		private int maxMorphs = 1;
+		/**
 		 * the part of the windup in which it may still be feinted
 		 */
 		private float feintWindow = 0.8f;
@@ -148,8 +152,8 @@ public final class CombatConfig {
 		 * whole one; every blow does dualDamage of a single weapon's, a swing costs dualStamina times as much, and the
 		 * parry is dualParryLoss ticks shorter (one blade holds a guard worse than a blade in both hands)
 		 */
-		private float dualChainWindup = 0.75f;
-		private float dualDamage = 0.7f;
+		private float dualChainWindup = 0.85f;
+		private float dualDamage = 0.65f;
 		private float dualStamina = 1.35f;
 		private int dualParryLoss = 1;
 
@@ -317,7 +321,7 @@ public final class CombatConfig {
 	 * the settings as of this version: a file written before keeps the values a player changed, the old defaults
 	 * that were tuned since are brought up to date
 	 */
-	private static final int VERSION = 2;
+	private static final int VERSION = 3;
 	private int version;
 
 	private static void migrate(CombatConfig c) {
@@ -336,6 +340,10 @@ public final class CombatConfig {
 			}
 		}
 		if (c.version < 2 && c.compat.sideSeverShare == 0.5f) c.compat.sideSeverShare = 0.4f;
+		if (c.version < 3) {
+			if (c.rules.dualChainWindup == 0.75f) c.rules.dualChainWindup = 0.85f;
+			if (c.rules.dualDamage == 0.7f) c.rules.dualDamage = 0.65f;
+		}
 		c.version = VERSION;
 	}
 

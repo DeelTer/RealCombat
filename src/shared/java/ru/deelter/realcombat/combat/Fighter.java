@@ -72,6 +72,10 @@ public final class Fighter {
 	 * the swing now (or the last one) is the other hand's
 	 */
 	private boolean offhand;
+	/**
+	 * times this windup changed its direction (a morph)
+	 */
+	private int morphs;
 
 	public Fighter(float stamina) {
 		this.stamina = stamina;
