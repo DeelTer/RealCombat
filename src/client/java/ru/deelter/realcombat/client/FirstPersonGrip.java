@@ -20,7 +20,11 @@ public final class FirstPersonGrip {
 	 * tuning by eye with the pose gametest ({@code -PgripTune})
 	 */
 	public static float WIDTH = 0.75f;
-	public static float TX = 0.06f, TY = 0.08f, TZ = 0, RX = 0.6f, RY = -0.95f, RZ = 0.15f;
+	/**
+	 * the middle of a sword's handle in its item model (a 16 pixel texture centred on 0): low on the left
+	 */
+	private static final float HANDLE_X = -0.33f, HANDLE_Y = -0.33f;
+	public static float TX = 0, TY = 0, TZ = 0, RX = 0.6f, RY = -0.95f, RZ = 0.15f;
 	private static ModelPart wideRight, wideLeft, slimRight, slimLeft;
 	private static PoseStack noted;
 	private static HumanoidArm notedArm;
@@ -66,7 +70,12 @@ public final class FirstPersonGrip {
 		float mirror = left ? -1 : 1;
 		// the fist at the grip of the sword as drawn, in the frame of the view
 		org.joml.Matrix4f base = new org.joml.Matrix4f(poseStack.last().pose());
-		org.joml.Vector3f grip = held.last().pose().transformPosition(new org.joml.Vector3f(TX * mirror, TY, TZ));
+		// the grip as the game draws a sword there: the handle pixel of the texture, through the first person
+		// transform of a handheld item (turned 0, -90, 25 degrees, moved 1.13, 3.2, 1.13 pixels, scaled 0.68)
+		org.joml.Vector3f handle = new org.joml.Vector3f(HANDLE_X, HANDLE_Y, 0).mul(0.68f);
+		new org.joml.Quaternionf().rotationXYZ(0, (float) Math.toRadians(-90 * mirror), (float) Math.toRadians(25 * mirror)).transform(handle);
+		handle.add(1.13f / 16 * mirror, 3.2f / 16, 1.13f / 16).add(TX * mirror, TY, TZ);
+		org.joml.Vector3f grip = held.last().pose().transformPosition(handle);
 		new org.joml.Matrix4f(base).invert().transformPosition(grip);
 		// the forearm runs from the fist to the shoulder, low at the side of the view, and is as long as it takes
 		org.joml.Vector3f shoulder = new org.joml.Vector3f(RX * mirror, RY, RZ);
