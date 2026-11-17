@@ -35,6 +35,8 @@ public final class ClothScreen {
 		ConfigCategory controls = builder.getOrCreateCategory(Component.translatable("realcombat.config.client"));
 		controls.addEntry(entries.startFloatField(text("directionThreshold"), client.getDirectionThreshold())
 				.setDefaultValue(clientDefaults.getDirectionThreshold()).setMin(0).setMax(45).setSaveConsumer(client::setDirectionThreshold).build());
+		controls.addEntry(entries.startBooleanToggle(text("keyDirections"), client.isKeyDirections())
+				.setDefaultValue(clientDefaults.isKeyDirections()).setSaveConsumer(client::setKeyDirections).build());
 		controls.addEntry(entries.startBooleanToggle(text("invertHorizontal"), client.isInvertHorizontal())
 				.setDefaultValue(clientDefaults.isInvertHorizontal()).setSaveConsumer(client::setInvertHorizontal).build());
 		controls.addEntry(entries.startBooleanToggle(text("invertVertical"), client.isInvertVertical())

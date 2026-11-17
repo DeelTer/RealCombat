@@ -89,5 +89,7 @@
   "realcombat.toggle.on": "RealCombat включён: направленные удары и парирование",
   "realcombat.toggle.off": "RealCombat выключен: ванильный бой, топор снова тешет и рубит. /realcombat on — вернуть",
   "realcombat.toggle.noserver": "На этом сервере нет RealCombat",
-  "realcombat.config.outcomeText": "Текст боя над хотбаром"
+  "realcombat.config.outcomeText": "Текст боя над хотбаром",
+  "key.realcombat.toggle": "Включить/выключить RealCombat",
+  "realcombat.config.keyDirections": "Сторона удара клавишами (A/D бока, Пробел сверху, Shift снизу)"
 }

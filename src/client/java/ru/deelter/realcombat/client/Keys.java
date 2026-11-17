@@ -16,6 +16,10 @@ public final class Keys {
 	public static final KeyMapping OVERHEAD = register("overhead", InputConstants.UNKNOWN.getValue());
 	public static final KeyMapping FEINT = register("feint", InputConstants.KEY_Z);
 	public static final KeyMapping KICK = register("kick", InputConstants.KEY_G);
+	/**
+	 * turns the mechanic on or off for oneself, as {@code /realcombat on|off}
+	 */
+	public static final KeyMapping TOGGLE = register("toggle", InputConstants.KEY_J);
 
 	private Keys() {
 	}

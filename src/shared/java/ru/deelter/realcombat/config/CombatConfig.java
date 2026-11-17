@@ -185,6 +185,11 @@ public final class CombatConfig {
 		 * turning the view right gives a slash from the left (the blade follows the mouse) instead of from the right
 		 */
 		private boolean invertHorizontal = false;
+		/**
+		 * the side of a swing from the keys held at the click, before the mouse: strafe left or right for a side
+		 * slash, jump for one from above, sneak for one from below
+		 */
+		private boolean keyDirections = false;
 		private boolean invertVertical = false;
 		/**
 		 * the blow when the view did not move

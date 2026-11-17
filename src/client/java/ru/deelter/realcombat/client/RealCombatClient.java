@@ -119,7 +119,7 @@ public final class RealCombatClient implements ClientModInitializer {
 	/**
 	 * {@code /realcombat on|off}: the server turns the mechanic on or off for this player (if it lets players do that)
 	 */
-	private static int toggle(boolean on) {
+	static int toggle(boolean on) {
 		switchedOff = !on;
 		var player = net.minecraft.client.Minecraft.getInstance().player;
 		if (!ClientPlayNetworking.canSend(ActionPayload.TYPE)) {

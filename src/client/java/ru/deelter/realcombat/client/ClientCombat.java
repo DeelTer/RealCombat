@@ -297,6 +297,8 @@ public final class ClientCombat {
 	private static Dir motionDir() {
 		LocalPlayer player = Minecraft.getInstance().player;
 		CombatConfig.Client client = CombatConfig.getInstance().getClient();
+		Dir keys = client.isKeyDirections() ? keyDir() : null;
+		if (keys != null) return keys;
 		float yaw = (float) Sweep.wrap(player.getYRot() - YAWS[HISTORY - 1]);
 		float pitch = player.getXRot() - PITCHES[HISTORY - 1];
 		if (Math.max(Math.abs(yaw), Math.abs(pitch)) < client.getDirectionThreshold()) return null;
@@ -306,6 +308,17 @@ public final class ClientCombat {
 		}
 		boolean right = yaw > 0 != client.isInvertHorizontal();
 		return right ? Dir.RIGHT : Dir.LEFT;
+	}
+
+	/**
+	 * the side the movement keys held now give a swing: jump from above, sneak from below, strafe from the side
+	 */
+	private static Dir keyDir() {
+		var options = Minecraft.getInstance().options;
+		if (options.keyJump.isDown()) return Dir.OVERHEAD;
+		if (options.keyShift.isDown()) return Dir.UNDER;
+		if (options.keyLeft.isDown() != options.keyRight.isDown()) return options.keyRight.isDown() ? Dir.RIGHT : Dir.LEFT;
+		return null;
 	}
 
 	public static void tick(Minecraft mc) {
@@ -340,6 +353,7 @@ public final class ClientCombat {
 		while (Keys.OVERHEAD.consumeClick()) if (handles) attack(Dir.OVERHEAD);
 		while (Keys.FEINT.consumeClick()) if (handles) feint();
 		while (Keys.KICK.consumeClick()) if (handles) kick();
+		while (Keys.TOGGLE.consumeClick()) RealCombatClient.toggle(!rules.isEnabled());
 		// a parry is a tap: holding the button does not parry again and again
 		boolean useDown = mc.options.keyUse.isDown();
 		if (handles && useDown && !useWasDown && !onUsableBlock() && !Weapons.shield(player.getOffhandItem()) && !offhandUse()) parry();
