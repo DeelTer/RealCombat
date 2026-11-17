@@ -115,6 +115,29 @@ public class PoseClientGameTest implements FabricClientGameTest {
 					context.takeScreenshot("kick-tune-" + shot);
 				}
 			}
+			// the hand round the grip in first person, for tuning by eye
+			String grip = System.getProperty("realcombat.gripTune");
+			if (grip != null) {
+				int n = 0;
+				for (String set : grip.split(";")) {
+					String[] v = set.split(",");
+					int shot = n++;
+					for (Shot pose : new Shot[]{shots.get(0), shots.get(4), shots.get(6), shots.get(16)}) {
+						context.runOnClient(client -> {
+							ru.deelter.realcombat.client.FirstPersonGrip.TX = Float.parseFloat(v[0]);
+							ru.deelter.realcombat.client.FirstPersonGrip.TY = Float.parseFloat(v[1]);
+							ru.deelter.realcombat.client.FirstPersonGrip.TZ = Float.parseFloat(v[2]);
+							ru.deelter.realcombat.client.FirstPersonGrip.RX = Float.parseFloat(v[3]);
+							ru.deelter.realcombat.client.FirstPersonGrip.RY = Float.parseFloat(v[4]);
+							ru.deelter.realcombat.client.FirstPersonGrip.RZ = Float.parseFloat(v[5]);
+							if (v.length > 6) ru.deelter.realcombat.client.FirstPersonGrip.WIDTH = Float.parseFloat(v[6]);
+							ClientCombat.setOwnFrozen(pose.pose());
+						});
+						look(context, world, spots[1], spots[0]);
+						context.takeScreenshot("grip-" + shot + "-" + pose.name().replace(' ', '-'));
+					}
+				}
+			}
 			Path dir = context.computeOnClient(client -> client.gameDirectory.toPath().resolve("screenshots"));
 			sheet(front, shots, dir.resolve("poses-front.png"));
 			sheet(side, shots, dir.resolve("poses-side.png"));

@@ -38,10 +38,19 @@ public abstract class ItemInHandRendererMixin {
 		poseStack.rotate(Axis.ZP.rotationDegrees(hand.rz() * mirror));
 		float roll = Poses.roll(pose);
 		if (roll != 0) poseStack.rotate(Poses.FIRST_PERSON_BLADE.rotation(roll * mirror));
+		ru.deelter.realcombat.client.FirstPersonGrip.note(poseStack, arm);
 	}
 
 	@Inject(method = "submitHandsWithItems", at = @At("TAIL"))
 	private void realcombat$kickLeg(float partial, PoseStack poseStack, net.minecraft.client.renderer.SubmitNodeCollector collector, net.minecraft.client.renderer.state.level.PlayerRenderState player, net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState hands, CallbackInfo ci) {
+		poseStack.pushPose();
+		try {
+			var hand = ru.deelter.realcombat.client.FirstPersonGrip.arm(poseStack);
+			if (hand != null) collector.submitModelPart(hand, poseStack, ru.deelter.realcombat.client.FirstPersonGrip.type(), player.avatarRenderState == null ? 0xF000F0 : player.avatarRenderState.lightCoords,
+					net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, (net.minecraft.client.renderer.texture.UvMapping) null);
+		} finally {
+			poseStack.popPose();
+		}
 		poseStack.pushPose();
 		try {
 			var leg = ru.deelter.realcombat.client.FirstPersonKick.leg(poseStack, partial);

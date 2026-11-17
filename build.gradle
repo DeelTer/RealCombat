@@ -170,6 +170,12 @@ if (project.hasProperty("kickTune")) {
         vmArg "-Drealcombat.kickTune=${project.kickTune}"
     }
 }
+// -PgripTune="x,y,z,rx,ry,rz;...": the pose test shows the first person hand round the grip placed each way
+if (project.hasProperty("gripTune")) {
+    loom.runs.matching { it.name == "clientGameTest" }.configureEach {
+        vmArg "-Drealcombat.gripTune=${project.gripTune}"
+    }
+}
 if (project.hasProperty("paperPort")) {
     loom.runs.matching { it.name == "clientGameTest" }.configureEach {
         vmArg "-Drealcombat.paperPort=${project.paperPort}"
