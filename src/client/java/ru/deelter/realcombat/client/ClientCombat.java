@@ -238,6 +238,26 @@ public final class ClientCombat {
 	}
 
 	/**
+	 * How low a shield held looking this far down is drawn, 0 high to 1 low: a smooth turn across the line where the
+	 * server takes it for a low guard, so a shield is not drawn jumping between two heights when the look wavers
+	 * near it (the rule itself stays a line).
+	 */
+	public static float lowGuard(float pitch) {
+		float line = rules.getShieldLowPitch();
+		return Math.clamp((pitch - (line - 8)) / 16f, 0f, 1f);
+	}
+
+	private static float ownLowGuard;
+
+	/**
+	 * the own shield's height in first person, following the look over a few frames
+	 */
+	public static float ownLowGuard(float pitch) {
+		ownLowGuard += (lowGuard(pitch) - ownLowGuard) * 0.25f;
+		return ownLowGuard;
+	}
+
+	/**
 	 * the own shield is raised (or coming up)
 	 */
 	public static boolean shieldUp() {

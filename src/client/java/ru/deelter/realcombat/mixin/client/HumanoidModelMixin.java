@@ -63,13 +63,13 @@ public abstract class HumanoidModelMixin {
 		var rules = ru.deelter.realcombat.client.ClientCombat.getRules();
 		float ticks = Math.max(1, rules.getShieldDelay() * 20);
 		// held low (looking down) the shield is lower, for the others to read: a blow from above goes over it
-		boolean low = state.xRot > rules.getShieldLowPitch();
+		float low = ru.deelter.realcombat.client.ClientCombat.lowGuard(state.xRot);
 		if (state.rightArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.rightArm, state.ticksUsingItem(HumanoidArm.RIGHT) / ticks, low);
 		if (state.leftArmPose == HumanoidModel.ArmPose.BLOCK) realcombat$raise(model.leftArm, state.ticksUsingItem(HumanoidArm.LEFT) / ticks, low);
 	}
 
-	private static void realcombat$raise(ModelPart arm, float share, boolean low) {
-		if (low) arm.xRot += 0.55f;
+	private static void realcombat$raise(ModelPart arm, float share, float low) {
+		arm.xRot += 0.55f * low;
 		if (share >= 1) return;
 		share = Math.max(0, share);
 		share = 1 - (1 - share) * (1 - share);
